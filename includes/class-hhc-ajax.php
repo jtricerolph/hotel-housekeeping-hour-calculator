@@ -81,8 +81,8 @@ class HHC_Ajax {
 
 		foreach ( $sites as $site ) {
 			$site_id  = isset( $site['site_id'] ) ? $site['site_id'] : '';
-			$cat_id   = isset( $site['site_category_id'] ) ? (string) $site['site_category_id'] : 'unknown';
-			$cat_name = isset( $site['site_category_name'] ) ? $site['site_category_name'] : 'Unknown';
+			$cat_id   = isset( $site['category_id'] ) ? (string) $site['category_id'] : 'unknown';
+			$cat_name = isset( $site['category_name'] ) ? $site['category_name'] : 'Unknown';
 
 			if ( ! empty( $site_id ) ) {
 				$site_to_cat[ $site_id ] = $cat_id;
@@ -112,9 +112,9 @@ class HHC_Ajax {
 			}
 
 			// Resolve category — prefer data from booking, fall back to site lookup
-			if ( isset( $booking['site_category_id'] ) && $booking['site_category_id'] !== '' ) {
-				$cat_id   = (string) $booking['site_category_id'];
-				$cat_name = isset( $booking['site_category_name'] ) ? $booking['site_category_name'] : 'Unknown';
+			if ( isset( $booking['category_id'] ) && $booking['category_id'] !== '' ) {
+				$cat_id   = (string) $booking['category_id'];
+				$cat_name = isset( $booking['category_name'] ) ? $booking['category_name'] : 'Unknown';
 			} elseif ( isset( $site_to_cat[ $site_id ] ) ) {
 				$cat_id   = $site_to_cat[ $site_id ];
 				$cat_name = isset( $category_map[ $cat_id ] ) ? $category_map[ $cat_id ]['name'] : 'Unknown';
@@ -329,8 +329,8 @@ class HHC_Ajax {
 
 		$cats = array();
 		foreach ( $response['data'] as $site ) {
-			$cat_id   = isset( $site['site_category_id'] ) ? (string) $site['site_category_id'] : 'unknown';
-			$cat_name = isset( $site['site_category_name'] ) ? $site['site_category_name'] : 'Unknown';
+			$cat_id   = isset( $site['category_id'] ) ? (string) $site['category_id'] : 'unknown';
+			$cat_name = isset( $site['category_name'] ) ? $site['category_name'] : 'Unknown';
 			if ( ! isset( $cats[ $cat_id ] ) ) {
 				$cats[ $cat_id ] = array( 'id' => $cat_id, 'name' => $cat_name, 'room_count' => 0 );
 			}
