@@ -125,7 +125,8 @@
 		tbody.innerHTML = rows;
 
 		tbody.querySelectorAll('.hhc-time-input').forEach(function (el) {
-			el.addEventListener('input', onTimeChange);
+			el.addEventListener('input',  onTimeChange);
+			el.addEventListener('change', onTimeCommit);
 		});
 	}
 
@@ -139,7 +140,12 @@
 		collectTimeReqs();
 		renderRequiredTable();
 		recalcDiffRow();
-		debounce('req', saveTimeRequirements, 1500);
+		debounce('req', saveTimeRequirements, 400);
+	}
+
+	function onTimeCommit() {
+		collectTimeReqs();
+		saveTimeRequirements();
 	}
 
 	function collectTimeReqs() {
@@ -590,6 +596,30 @@
 		clearTimeout(el._timer);
 		el._timer = setTimeout(function () { el.style.opacity = '0'; }, isError ? 5000 : 2500);
 	}
+
+	// =========================================================================
+	// Beacon save on page unload (handles browser refresh mid-debounce)
+	// =========================================================================
+
+	window.addEventListener('beforeunload', function () {
+		if (!bookingsData) { return; }
+
+		collectTimeReqs();
+		var fd = new FormData();
+		fd.append('action', 'hhc_save_time_requirements');
+		fd.append('nonce',  hhcData.nonce);
+		fd.append('time_requirements', JSON.stringify(settings.time_requirements));
+		navigator.sendBeacon(hhcData.ajax_url, fd);
+
+		var staffData = collectStaffData();
+		if (staffData.length > 0) {
+			var fd2 = new FormData();
+			fd2.append('action',     'hhc_save_staff_data');
+			fd2.append('nonce',      hhcData.nonce);
+			fd2.append('staff_data', JSON.stringify(staffData));
+			navigator.sendBeacon(hhcData.ajax_url, fd2);
+		}
+	});
 
 	// =========================================================================
 	// Start
