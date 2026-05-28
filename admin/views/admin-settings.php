@@ -78,6 +78,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<th style="width:80px">Order</th>
 						<th>Category Name</th>
 						<th style="width:80px">Rooms</th>
+						<th style="width:80px;text-align:center">Exclude</th>
 					</tr>
 				</thead>
 				<tbody id="hhc-cats-tbody"></tbody>

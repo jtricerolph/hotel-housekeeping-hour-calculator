@@ -213,6 +213,41 @@
 		});
 		html += '</tbody>';
 
+		// ---- Footer: totals row ----
+		var totals = {};
+		dates.forEach(function (date) {
+			totals[date] = { servicing: 0, departs: 0, stays: 0, arrivals: 0 };
+			cats.forEach(function (cat) {
+				var d = cat.days[date];
+				totals[date].servicing += d.total_servicing;
+				totals[date].departs   += d.departs;
+				totals[date].stays     += d.stays;
+				totals[date].arrivals  += d.arrivals;
+			});
+		});
+
+		html += '<tfoot>';
+		html += '<tr class="hhc-cat-row-1">';
+		html += '<td class="hhc-cat-label" rowspan="3" style="font-style:italic">Total</td>';
+		dates.forEach(function (date) {
+			html += '<td class="hhc-total-cell" rowspan="3">' + totals[date].servicing + '</td>';
+			html += '<td class="hhc-breakdown-cell hhc-depart-row">' + totals[date].departs + ' dep</td>';
+		});
+		html += '</tr>';
+
+		html += '<tr class="hhc-cat-row-2">';
+		dates.forEach(function (date) {
+			html += '<td class="hhc-breakdown-cell hhc-stay-row">' + totals[date].stays + ' sta</td>';
+		});
+		html += '</tr>';
+
+		html += '<tr class="hhc-cat-row-3">';
+		dates.forEach(function (date) {
+			html += '<td class="hhc-breakdown-cell hhc-arrive-row">' + totals[date].arrivals + ' arr</td>';
+		});
+		html += '</tr>';
+		html += '</tfoot>';
+
 		table.innerHTML = html;
 	}
 
@@ -454,6 +489,8 @@
 	// =========================================================================
 
 	function saveTimeRequirements() {
+		collectTimeReqs();
+
 		var fd = new FormData();
 		fd.append('action', 'hhc_save_time_requirements');
 		fd.append('nonce', hhcData.nonce);
@@ -462,7 +499,10 @@
 		fetch(hhcData.ajax_url, { method: 'POST', body: fd })
 			.then(function (r) { return r.json(); })
 			.then(function (resp) {
-				flashSave(resp.success ? 'Requirements saved' : 'Save failed');
+				flashSave(resp.success ? 'Requirements saved' : ('Save failed: ' + (resp.data && resp.data.message ? resp.data.message : 'unknown error')));
+			})
+			.catch(function (err) {
+				flashSave('Save error: ' + err);
 			});
 	}
 
@@ -478,7 +518,10 @@
 		fetch(hhcData.ajax_url, { method: 'POST', body: fd })
 			.then(function (r) { return r.json(); })
 			.then(function (resp) {
-				flashSave(resp.success ? 'Staff hours saved' : 'Save failed');
+				flashSave(resp.success ? 'Staff hours saved' : ('Save failed: ' + (resp.data && resp.data.message ? resp.data.message : 'unknown error')));
+			})
+			.catch(function (err) {
+				flashSave('Save error: ' + err);
 			});
 	}
 
@@ -540,10 +583,12 @@
 	function flashSave(msg) {
 		var el = document.getElementById('hhc-save-status');
 		if (!el) { return; }
+		var isError = /error|failed/i.test(msg);
+		el.style.color    = isError ? '#c0392b' : '#28a745';
 		el.textContent    = msg;
 		el.style.opacity  = '1';
 		clearTimeout(el._timer);
-		el._timer = setTimeout(function () { el.style.opacity = '0'; }, 2500);
+		el._timer = setTimeout(function () { el.style.opacity = '0'; }, isError ? 5000 : 2500);
 	}
 
 	// =========================================================================

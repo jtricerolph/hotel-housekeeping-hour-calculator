@@ -53,11 +53,13 @@ jQuery(function ($) {
 	function renderCategories(cats) {
 		var html = '';
 		cats.forEach(function (cat, i) {
+			var checked = cat.excluded ? ' checked' : '';
 			html += '<tr data-cat-id="' + escHtml(String(cat.id)) + '">';
 			html += '<td><input type="number" class="hhc-cat-order-input" value="' + (i + 1) +
 				'" min="1" max="99" style="width:60px;text-align:center"></td>';
 			html += '<td>' + escHtml(cat.name) + '</td>';
 			html += '<td>' + cat.room_count + '</td>';
+			html += '<td style="text-align:center"><input type="checkbox" class="hhc-cat-exclude"' + checked + '></td>';
 			html += '</tr>';
 		});
 		$('#hhc-cats-tbody').html(html);
@@ -72,23 +74,26 @@ jQuery(function ($) {
 		var rows = [];
 		$('#hhc-cats-tbody tr').each(function () {
 			rows.push({
-				id:    $(this).data('cat-id'),
-				order: parseInt($(this).find('.hhc-cat-order-input').val(), 10) || 0
+				id:       $(this).data('cat-id'),
+				order:    parseInt($(this).find('.hhc-cat-order-input').val(), 10) || 0,
+				excluded: $(this).find('.hhc-cat-exclude').is(':checked')
 			});
 		});
 		rows.sort(function (a, b) { return a.order - b.order; });
-		var ordered = rows.map(function (r) { return r.id; });
+		var ordered  = rows.map(function (r) { return r.id; });
+		var excluded = rows.filter(function (r) { return r.excluded; }).map(function (r) { return r.id; });
 
 		$btn.prop('disabled', true).text('Saving…');
 		$status.text('').css('color', '');
 
 		$.post(hhcAdmin.ajax_url, {
-			action: 'hhc_save_category_order',
-			nonce:  hhcAdmin.nonce,
-			order:  JSON.stringify(ordered)
+			action:   'hhc_save_category_order',
+			nonce:    hhcAdmin.nonce,
+			order:    JSON.stringify(ordered),
+			excluded: JSON.stringify(excluded)
 		}, function (resp) {
 			if (resp.success) {
-				$status.text('✓ Order saved').css('color', '#27ae60');
+				$status.text('✓ Order and exclusions saved').css('color', '#27ae60');
 			} else {
 				var msg = (resp.data && resp.data.message) ? resp.data.message : 'Failed';
 				$status.text('✗ ' + msg).css('color', '#e74c3c');

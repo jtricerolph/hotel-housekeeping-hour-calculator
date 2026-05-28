@@ -133,8 +133,9 @@ class HHC_Ajax {
 				continue;
 			}
 
-			$arrival_date   = date( 'Y-m-d', strtotime( $arrival_str ) );
-			$departure_date = date( 'Y-m-d', strtotime( $departure_str ) );
+			// substr avoids strtotime timezone shifting the date part
+			$arrival_date   = substr( $arrival_str, 0, 10 );
+			$departure_date = substr( $departure_str, 0, 10 );
 
 			foreach ( $dates as $date ) {
 				$is_arriving  = ( $arrival_date === $date );
@@ -169,8 +170,9 @@ class HHC_Ajax {
 		}
 
 		// Apply saved sort order (stored as cat_keys), append any new categories
-		$saved_order = get_option( 'hhc_category_order', array() );
-		$ordered_keys = array();
+		$saved_order    = get_option( 'hhc_category_order', array() );
+		$excluded       = get_option( 'hhc_excluded_categories', array() );
+		$ordered_keys   = array();
 		foreach ( $saved_order as $key ) {
 			if ( isset( $category_map[ $key ] ) ) {
 				$ordered_keys[] = $key;
@@ -182,10 +184,13 @@ class HHC_Ajax {
 			}
 		}
 
-		// Build output
+		// Build output — skip excluded categories
 		$categories_out = array();
 		foreach ( $ordered_keys as $cat_key ) {
 			if ( ! isset( $category_map[ $cat_key ] ) ) {
+				continue;
+			}
+			if ( in_array( $cat_key, $excluded, true ) ) {
 				continue;
 			}
 			$cat_days = array();
@@ -337,15 +342,18 @@ class HHC_Ajax {
 
 		// Apply saved order, append any new categories
 		$saved_order = get_option( 'hhc_category_order', array() );
+		$excluded    = get_option( 'hhc_excluded_categories', array() );
 		$ordered     = array();
 		foreach ( $saved_order as $key ) {
 			if ( isset( $cats[ $key ] ) ) {
+				$cats[ $key ]['excluded'] = in_array( $key, $excluded, true );
 				$ordered[] = $cats[ $key ];
 				unset( $cats[ $key ] );
 			}
 		}
-		foreach ( $cats as $cat ) {
-			$ordered[] = $cat;
+		foreach ( $cats as $key => $cat ) {
+			$cat['excluded'] = in_array( $key, $excluded, true );
+			$ordered[]       = $cat;
 		}
 
 		wp_send_json_success( array( 'categories' => $ordered ) );
@@ -357,13 +365,19 @@ class HHC_Ajax {
 		$raw   = isset( $_POST['order'] ) ? $_POST['order'] : '';
 		$order = json_decode( stripslashes( $raw ), true );
 
+		$raw_excl = isset( $_POST['excluded'] ) ? $_POST['excluded'] : '';
+		$excl     = json_decode( stripslashes( $raw_excl ), true );
+
 		if ( ! is_array( $order ) ) {
 			wp_send_json_error( array( 'message' => 'Invalid data' ) );
 			return;
 		}
 
-		$clean = array_map( 'sanitize_text_field', $order );
-		update_option( 'hhc_category_order', $clean );
-		wp_send_json_success( array( 'message' => 'Order saved' ) );
+		$clean_order = array_map( 'sanitize_text_field', $order );
+		$clean_excl  = is_array( $excl ) ? array_map( 'sanitize_text_field', $excl ) : array();
+
+		update_option( 'hhc_category_order', $clean_order );
+		update_option( 'hhc_excluded_categories', $clean_excl );
+		wp_send_json_success( array( 'message' => 'Saved' ) );
 	}
 }
