@@ -237,6 +237,11 @@ class HHC_Ajax {
 		$staff     = get_option( 'hhc_staff_data', array() );
 		$tolerance = absint( get_option( 'hhc_tolerance_minutes', 30 ) );
 
+		// PHP empty arrays encode as JSON [] not {} — cast to object so JS receives {} not []
+		if ( empty( $time_reqs ) ) {
+			$time_reqs = new stdClass();
+		}
+
 		wp_send_json_success(
 			array(
 				'time_requirements' => $time_reqs,

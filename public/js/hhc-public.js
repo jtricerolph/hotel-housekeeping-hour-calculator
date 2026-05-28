@@ -75,7 +75,8 @@
 				if (!resp.success) {
 					throw 'Failed to fetch settings';
 				}
-				settings.time_requirements = resp.data.time_requirements || {};
+				var tr = resp.data.time_requirements;
+				settings.time_requirements = (tr && !Array.isArray(tr)) ? tr : {};
 				settings.staff_data        = resp.data.staff_data || [];
 				settings.tolerance_minutes = resp.data.tolerance_minutes || 30;
 				console.log('[HHC] time_requirements from server:', JSON.stringify(settings.time_requirements));
