@@ -1,0 +1,52 @@
+/* =========================================================
+   Hotel Housekeeping Hour Calculator — Admin Styles
+   ========================================================= */
+
+.hhc-admin-wrap h1 {
+	margin-bottom: 24px;
+}
+
+.hhc-admin-card {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	padding: 24px 28px;
+	margin-bottom: 24px;
+	max-width: 860px;
+}
+
+.hhc-admin-card h2 {
+	margin: 0 0 16px;
+	font-size: 16px;
+	font-weight: 700;
+	border-bottom: 1px solid #eee;
+	padding-bottom: 10px;
+}
+
+.hhc-test-connection {
+	margin-top: 12px;
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+
+.hhc-test-result {
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.hhc-fetch-status {
+	margin-left: 12px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.hhc-cats-table td,
+.hhc-cats-table th {
+	padding: 8px 12px;
+}
+
+.hhc-cat-order-input {
+	width: 60px;
+	text-align: center;
+}

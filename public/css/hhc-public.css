@@ -1,0 +1,414 @@
+/* =========================================================
+   Hotel Housekeeping Hour Calculator — Public Styles
+   ========================================================= */
+
+/* ---- Layout ---- */
+.hhc-calculator {
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	font-size: 14px;
+	color: #1a1a2e;
+	max-width: 1400px;
+	margin: 0 auto;
+	padding: 0 0 40px;
+}
+
+.hhc-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+	padding: 20px 0 16px;
+	border-bottom: 2px solid #e0e0e0;
+	margin-bottom: 24px;
+}
+
+.hhc-title {
+	margin: 0 0 4px;
+	font-size: 22px;
+	font-weight: 700;
+	color: #1a1a2e;
+}
+
+.hhc-date-range {
+	font-size: 13px;
+	color: #666;
+	font-weight: 500;
+}
+
+.hhc-header-right {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+/* ---- Buttons ---- */
+.hhc-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	border: none;
+	border-radius: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: opacity 0.15s;
+}
+.hhc-btn:hover { opacity: 0.85; }
+.hhc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.hhc-btn-secondary {
+	background: #f0f0f0;
+	color: #333;
+	border: 1px solid #ccc;
+}
+
+.hhc-btn-add {
+	background: #2c3e50;
+	color: #fff;
+	margin-top: 10px;
+}
+
+/* ---- Loading / Error ---- */
+.hhc-loading {
+	text-align: center;
+	padding: 40px 20px;
+	color: #666;
+}
+
+.hhc-spinner {
+	display: inline-block;
+	width: 36px;
+	height: 36px;
+	border: 4px solid #e0e0e0;
+	border-top-color: #2c3e50;
+	border-radius: 50%;
+	animation: hhc-spin 0.8s linear infinite;
+	margin-bottom: 12px;
+}
+
+@keyframes hhc-spin {
+	to { transform: rotate(360deg); }
+}
+
+.hhc-error {
+	background: #fff0f0;
+	border: 1px solid #f5c6cb;
+	border-radius: 8px;
+	padding: 16px 20px;
+	color: #721c24;
+	margin-bottom: 20px;
+}
+
+/* ---- Save status ---- */
+.hhc-save-status {
+	font-size: 12px;
+	color: #28a745;
+	font-weight: 600;
+	opacity: 0;
+	transition: opacity 0.4s;
+}
+
+/* ---- Sections ---- */
+.hhc-section {
+	background: #fff;
+	border-radius: 10px;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+	padding: 20px 24px;
+	margin-bottom: 24px;
+}
+
+.hhc-section-header {
+	margin-bottom: 16px;
+}
+
+.hhc-section-header h3 {
+	margin: 0 0 4px;
+	font-size: 16px;
+	font-weight: 700;
+	color: #1a1a2e;
+}
+
+.hhc-section-desc {
+	margin: 0;
+	font-size: 12px;
+	color: #777;
+}
+
+/* ---- Table container ---- */
+.hhc-table-wrap {
+	overflow-x: auto;
+}
+
+.hhc-table-scroll {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+/* ---- Base table styles ---- */
+.hhc-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.hhc-table th,
+.hhc-table td {
+	padding: 8px 12px;
+	border: 1px solid #e0e0e0;
+	text-align: center;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.hhc-table thead th {
+	background: #2c3e50;
+	color: #fff;
+	font-weight: 600;
+	font-size: 12px;
+	letter-spacing: 0.3px;
+}
+
+/* ---- Time Requirements Table ---- */
+.hhc-time-table .hhc-col-cat {
+	text-align: left;
+	min-width: 160px;
+}
+
+.hhc-time-table .hhc-col-action {
+	width: 140px;
+}
+
+.hhc-time-table tbody td:first-child {
+	text-align: left;
+	font-weight: 600;
+	background: #f7f7f7;
+}
+
+.hhc-depart-col { background: #c0392b !important; }
+.hhc-stay-col   { background: #2980b9 !important; }
+.hhc-arrive-col { background: #27ae60 !important; }
+
+.hhc-cat-name-cell {
+	text-align: left;
+	font-weight: 600;
+	background: #f7f7f7;
+}
+
+.hhc-time-input {
+	width: 80px;
+	padding: 6px 8px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 14px;
+	text-align: center;
+	-moz-appearance: textfield;
+}
+.hhc-time-input::-webkit-inner-spin-button,
+.hhc-time-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.hhc-time-input:focus {
+	outline: none;
+	border-color: #2c3e50;
+	box-shadow: 0 0 0 2px rgba(44,62,80,0.15);
+}
+
+/* ---- Summary Table ---- */
+.hhc-summary-table {
+	min-width: 800px;
+}
+
+.hhc-summary-table .hhc-th-cat {
+	text-align: left;
+	min-width: 140px;
+	position: sticky;
+	left: 0;
+	z-index: 2;
+	background: #2c3e50;
+}
+
+.hhc-summary-table .hhc-th-day {
+	min-width: 90px;
+	background: #34495e !important;
+}
+
+.hhc-summary-table .hhc-th-rooms {
+	background: #1a252f !important;
+	font-size: 11px;
+}
+
+.hhc-summary-table .hhc-th-breakdown {
+	background: #2c3e50 !important;
+	font-size: 11px;
+}
+
+/* Category label column — sticky */
+.hhc-summary-table .hhc-cat-label {
+	text-align: left;
+	font-weight: 700;
+	background: #f5f5f5;
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	min-width: 140px;
+	padding: 10px 12px;
+	border-right: 2px solid #ccc;
+}
+
+/* Total rooms cell */
+.hhc-total-cell {
+	font-size: 22px;
+	font-weight: 700;
+	color: #2c3e50;
+	background: #eaf0fb;
+	border-right: 2px solid #ccc;
+	min-width: 52px;
+}
+
+/* Breakdown cells */
+.hhc-breakdown-cell {
+	font-size: 12px;
+	font-weight: 600;
+	min-width: 52px;
+}
+
+.hhc-depart-row { background: #fdf2f2; color: #c0392b; }
+.hhc-stay-row   { background: #f2f8fd; color: #2980b9; }
+.hhc-arrive-row { background: #f2fdf5; color: #27ae60; }
+
+/* Category separator */
+.hhc-summary-table .hhc-cat-row-last td {
+	border-bottom: 2px solid #bbb;
+}
+
+/* ---- Required Hours Table ---- */
+.hhc-required-table {
+	min-width: 600px;
+}
+
+.hhc-required-table td:first-child,
+.hhc-required-table th:first-child {
+	text-align: left;
+	min-width: 140px;
+}
+
+.hhc-total-row {
+	background: #eaf0fb;
+	font-weight: 700;
+}
+
+.hhc-total-row td {
+	border-top: 2px solid #bbb;
+}
+
+/* ---- Staff Table ---- */
+.hhc-staff-table {
+	min-width: 600px;
+}
+
+.hhc-staff-table .hhc-col-name {
+	text-align: left;
+	min-width: 150px;
+}
+
+.hhc-staff-name {
+	width: 130px;
+	padding: 5px 8px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 13px;
+}
+
+.hhc-staff-hours {
+	width: 60px;
+	padding: 5px 6px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 13px;
+	text-align: center;
+	-moz-appearance: textfield;
+}
+.hhc-staff-hours::-webkit-inner-spin-button,
+.hhc-staff-hours::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+.hhc-staff-name:focus,
+.hhc-staff-hours:focus {
+	outline: none;
+	border-color: #2c3e50;
+	box-shadow: 0 0 0 2px rgba(44,62,80,0.12);
+}
+
+.hhc-col-remove { width: 40px; }
+
+.hhc-remove-staff {
+	background: none;
+	border: 1px solid #e0e0e0;
+	border-radius: 4px;
+	color: #999;
+	cursor: pointer;
+	font-size: 14px;
+	padding: 3px 7px;
+	transition: all 0.15s;
+}
+.hhc-remove-staff:hover {
+	background: #fff0f0;
+	border-color: #e74c3c;
+	color: #e74c3c;
+}
+
+.hhc-staff-total-row {
+	background: #f5f5f5;
+	font-weight: 700;
+}
+.hhc-staff-total-row td {
+	border-top: 2px solid #bbb;
+}
+
+/* ---- Diff Row ---- */
+.hhc-diff-row td {
+	font-weight: 700;
+	font-size: 13px;
+	border-top: 1px solid #ccc;
+}
+
+.hhc-diff-row td:first-child {
+	font-size: 12px;
+	color: #555;
+}
+
+.hhc-diff-cell {
+	transition: background 0.2s, color 0.2s;
+}
+
+/* Green — within tolerance */
+.hhc-diff-ok {
+	background: #d4edda !important;
+	color: #155724 !important;
+}
+
+/* Red — understaffed */
+.hhc-diff-under {
+	background: #f8d7da !important;
+	color: #721c24 !important;
+}
+
+/* Amber — overstaffed */
+.hhc-diff-over {
+	background: #fff3cd !important;
+	color: #856404 !important;
+}
+
+.hhc-staff-controls {
+	margin-top: 8px;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+	.hhc-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	.hhc-section {
+		padding: 16px;
+	}
+}
