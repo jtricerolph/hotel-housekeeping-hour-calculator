@@ -47,8 +47,8 @@ class HHC_Ajax {
 	public function get_bookings_data() {
 		$this->verify_public();
 
-		$force = ! empty( $_POST['force_refresh'] ) && $_POST['force_refresh'] === '1';
-		$today = current_time( 'Y-m-d' );
+		$force     = ! empty( $_POST['force_refresh'] ) && $_POST['force_refresh'] === '1';
+		$today     = current_time( 'Y-m-d' );
 		$cache_key = 'hhc_bookings_' . $today;
 
 		if ( ! $force ) {
@@ -75,22 +75,23 @@ class HHC_Ajax {
 		$sites_resp = $api->fetch_sites_list();
 		$sites      = isset( $sites_resp['data'] ) ? $sites_resp['data'] : array();
 
-		// Build category map and site→category lookup from the sites list
-		$category_map     = array(); // cat_id => ['name' => ..., 'total_rooms' => ...]
-		$site_to_cat      = array(); // site_id => cat_id
+		// category_id differs between sites_list and bookings_list for the same category.
+		// Use normalised category_name as the stable grouping key throughout.
+		$category_map  = array(); // cat_key => ['name' => ..., 'total_rooms' => ...]
+		$site_to_key   = array(); // site_id  => cat_key
 
 		foreach ( $sites as $site ) {
 			$site_id  = isset( $site['site_id'] ) ? $site['site_id'] : '';
-			$cat_id   = isset( $site['category_id'] ) ? (string) $site['category_id'] : 'unknown';
-			$cat_name = isset( $site['category_name'] ) ? $site['category_name'] : 'Unknown';
+			$cat_name = isset( $site['category_name'] ) ? trim( $site['category_name'] ) : 'Unknown';
+			$cat_key  = strtolower( $cat_name );
 
 			if ( ! empty( $site_id ) ) {
-				$site_to_cat[ $site_id ] = $cat_id;
+				$site_to_key[ $site_id ] = $cat_key;
 			}
-			if ( ! isset( $category_map[ $cat_id ] ) ) {
-				$category_map[ $cat_id ] = array( 'name' => $cat_name, 'total_rooms' => 0 );
+			if ( ! isset( $category_map[ $cat_key ] ) ) {
+				$category_map[ $cat_key ] = array( 'name' => $cat_name, 'total_rooms' => 0 );
 			}
-			$category_map[ $cat_id ]['total_rooms']++;
+			$category_map[ $cat_key ]['total_rooms']++;
 		}
 
 		// 7-day window starting today
@@ -99,7 +100,7 @@ class HHC_Ajax {
 			$dates[] = date( 'Y-m-d', strtotime( $today . ' +' . $i . ' days' ) );
 		}
 
-		// day_data[$date][$cat_id] = ['departs'=>0, 'stays'=>0, 'arrivals'=>0, 'rooms'=>[]]
+		// day_data[$date][$cat_key] = ['departs'=>0, 'stays'=>0, 'arrivals'=>0, 'rooms'=>[]]
 		$day_data = array();
 		foreach ( $dates as $d ) {
 			$day_data[ $d ] = array();
@@ -111,21 +112,19 @@ class HHC_Ajax {
 				continue;
 			}
 
-			// Resolve category — prefer data from booking, fall back to site lookup
-			if ( isset( $booking['category_id'] ) && $booking['category_id'] !== '' ) {
-				$cat_id   = (string) $booking['category_id'];
-				$cat_name = isset( $booking['category_name'] ) ? $booking['category_name'] : 'Unknown';
-			} elseif ( isset( $site_to_cat[ $site_id ] ) ) {
-				$cat_id   = $site_to_cat[ $site_id ];
-				$cat_name = isset( $category_map[ $cat_id ] ) ? $category_map[ $cat_id ]['name'] : 'Unknown';
+			// Resolve category name — prefer booking field, fall back to site lookup
+			if ( ! empty( $booking['category_name'] ) ) {
+				$cat_name = trim( $booking['category_name'] );
+			} elseif ( isset( $site_to_key[ $site_id ] ) ) {
+				$cat_key  = $site_to_key[ $site_id ];
+				$cat_name = $category_map[ $cat_key ]['name'];
 			} else {
-				$cat_id   = 'unknown';
 				$cat_name = 'Unknown';
 			}
+			$cat_key = strtolower( $cat_name );
 
-			// Ensure this category appears in the map (may come from booking data not in sites_list)
-			if ( ! isset( $category_map[ $cat_id ] ) ) {
-				$category_map[ $cat_id ] = array( 'name' => $cat_name, 'total_rooms' => 0 );
+			if ( ! isset( $category_map[ $cat_key ] ) ) {
+				$category_map[ $cat_key ] = array( 'name' => $cat_name, 'total_rooms' => 0 );
 			}
 
 			$arrival_str   = isset( $booking['booking_arrival'] ) ? $booking['booking_arrival'] : '';
@@ -146,9 +145,8 @@ class HHC_Ajax {
 					continue;
 				}
 
-				if ( ! isset( $day_data[ $date ][ $cat_id ] ) ) {
-					$day_data[ $date ][ $cat_id ] = array(
-						'cat_name' => $cat_name,
+				if ( ! isset( $day_data[ $date ][ $cat_key ] ) ) {
+					$day_data[ $date ][ $cat_key ] = array(
 						'departs'  => 0,
 						'stays'    => 0,
 						'arrivals' => 0,
@@ -157,44 +155,43 @@ class HHC_Ajax {
 				}
 
 				if ( $is_departing ) {
-					$day_data[ $date ][ $cat_id ]['departs']++;
+					$day_data[ $date ][ $cat_key ]['departs']++;
 				}
 				if ( $is_staying ) {
-					$day_data[ $date ][ $cat_id ]['stays']++;
+					$day_data[ $date ][ $cat_key ]['stays']++;
 				}
 				if ( $is_arriving ) {
-					$day_data[ $date ][ $cat_id ]['arrivals']++;
+					$day_data[ $date ][ $cat_key ]['arrivals']++;
 				}
 				// Unique room count — a back-to-back room counts as 1 unit of work
-				$day_data[ $date ][ $cat_id ]['rooms'][ $site_id ] = true;
+				$day_data[ $date ][ $cat_key ]['rooms'][ $site_id ] = true;
 			}
 		}
 
-		// Apply saved category sort order
-		$saved_order   = get_option( 'hhc_category_order', array() );
-		$ordered_ids   = array();
-
-		foreach ( $saved_order as $cat_id ) {
-			if ( isset( $category_map[ $cat_id ] ) ) {
-				$ordered_ids[] = $cat_id;
+		// Apply saved sort order (stored as cat_keys), append any new categories
+		$saved_order = get_option( 'hhc_category_order', array() );
+		$ordered_keys = array();
+		foreach ( $saved_order as $key ) {
+			if ( isset( $category_map[ $key ] ) ) {
+				$ordered_keys[] = $key;
 			}
 		}
-		foreach ( $category_map as $cat_id => $cat ) {
-			if ( ! in_array( $cat_id, $ordered_ids, true ) ) {
-				$ordered_ids[] = $cat_id;
+		foreach ( array_keys( $category_map ) as $key ) {
+			if ( ! in_array( $key, $ordered_keys, true ) ) {
+				$ordered_keys[] = $key;
 			}
 		}
 
 		// Build output
 		$categories_out = array();
-		foreach ( $ordered_ids as $cat_id ) {
-			if ( ! isset( $category_map[ $cat_id ] ) ) {
+		foreach ( $ordered_keys as $cat_key ) {
+			if ( ! isset( $category_map[ $cat_key ] ) ) {
 				continue;
 			}
 			$cat_days = array();
 			foreach ( $dates as $date ) {
-				if ( isset( $day_data[ $date ][ $cat_id ] ) ) {
-					$d = $day_data[ $date ][ $cat_id ];
+				if ( isset( $day_data[ $date ][ $cat_key ] ) ) {
+					$d            = $day_data[ $date ][ $cat_key ];
 					$cat_days[ $date ] = array(
 						'total_servicing' => count( $d['rooms'] ),
 						'departs'         => $d['departs'],
@@ -212,9 +209,9 @@ class HHC_Ajax {
 			}
 
 			$categories_out[] = array(
-				'id'          => $cat_id,
-				'name'        => $category_map[ $cat_id ]['name'],
-				'total_rooms' => $category_map[ $cat_id ]['total_rooms'],
+				'id'          => $cat_key,
+				'name'        => $category_map[ $cat_key ]['name'],
+				'total_rooms' => $category_map[ $cat_key ]['total_rooms'],
 				'days'        => $cat_days,
 			);
 		}
@@ -327,23 +324,24 @@ class HHC_Ajax {
 			return;
 		}
 
+		// Key by normalised name — same reason as get_bookings_data()
 		$cats = array();
 		foreach ( $response['data'] as $site ) {
-			$cat_id   = isset( $site['category_id'] ) ? (string) $site['category_id'] : 'unknown';
-			$cat_name = isset( $site['category_name'] ) ? $site['category_name'] : 'Unknown';
-			if ( ! isset( $cats[ $cat_id ] ) ) {
-				$cats[ $cat_id ] = array( 'id' => $cat_id, 'name' => $cat_name, 'room_count' => 0 );
+			$cat_name = isset( $site['category_name'] ) ? trim( $site['category_name'] ) : 'Unknown';
+			$cat_key  = strtolower( $cat_name );
+			if ( ! isset( $cats[ $cat_key ] ) ) {
+				$cats[ $cat_key ] = array( 'id' => $cat_key, 'name' => $cat_name, 'room_count' => 0 );
 			}
-			$cats[ $cat_id ]['room_count']++;
+			$cats[ $cat_key ]['room_count']++;
 		}
 
 		// Apply saved order, append any new categories
 		$saved_order = get_option( 'hhc_category_order', array() );
 		$ordered     = array();
-		foreach ( $saved_order as $cat_id ) {
-			if ( isset( $cats[ $cat_id ] ) ) {
-				$ordered[] = $cats[ $cat_id ];
-				unset( $cats[ $cat_id ] );
+		foreach ( $saved_order as $key ) {
+			if ( isset( $cats[ $key ] ) ) {
+				$ordered[] = $cats[ $key ];
+				unset( $cats[ $key ] );
 			}
 		}
 		foreach ( $cats as $cat ) {
