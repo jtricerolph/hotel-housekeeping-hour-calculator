@@ -78,6 +78,7 @@
 				settings.time_requirements = resp.data.time_requirements || {};
 				settings.staff_data        = resp.data.staff_data || [];
 				settings.tolerance_minutes = resp.data.tolerance_minutes || 30;
+				console.log('[HHC] time_requirements from server:', JSON.stringify(settings.time_requirements));
 			});
 	}
 
@@ -113,6 +114,7 @@
 		var rows  = '';
 
 		bookingsData.categories.forEach(function (cat) {
+			console.log('[HHC] cat.id:', JSON.stringify(cat.id), '| stored:', JSON.stringify(settings.time_requirements[cat.id]));
 			var req = settings.time_requirements[cat.id] || { depart: 0, stay: 0, arrive: 0 };
 			rows += '<tr>';
 			rows += '<td class="hhc-cat-name-cell">' + esc(cat.name) + '</td>';
