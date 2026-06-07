@@ -171,7 +171,7 @@
 				var tooltip   = hint > 0
 					? 'Last week: ' + hint + ' ' + cat.name + ' room' + (hint === 1 ? '' : 's') +
 					  ' picked up within ' + leadDays + ' day' + (leadDays === 1 ? '' : 's') + ' of arrival'
-					: 'No prior-week pickup data for this lead time';
+					: 'Last week: no late pickups on this weekday';
 
 				html += '<div class="hhc-pickup-ctrl">';
 				html += '<button class="hhc-pickup-btn hhc-pickup-dec"' +
