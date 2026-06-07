@@ -112,6 +112,8 @@
 		show('hhc-staff-section');
 		show('hhc-general-tasks-section');
 		show('hhc-time-section');
+
+		syncTableColumns();
 	}
 
 	// =========================================================================
@@ -573,6 +575,65 @@
 			el.addEventListener('input',  onTimeChange);
 			el.addEventListener('change', onTimeCommit);
 		});
+	}
+
+	// =========================================================================
+	// Column sync — aligns day spans across Summary / Required / Staff tables
+	// =========================================================================
+
+	function syncTableColumns() {
+		var dates    = bookingsData.dates;
+		var nDays    = dates.length; // 7
+
+		// Let the required table (simplest structure: 1 col per day) set the day width.
+		// Measure its rendered day-column widths from the thead ths (skip first = category).
+		var reqTable = document.getElementById('hhc-required-table');
+		var reqThs   = reqTable ? reqTable.querySelectorAll('thead th') : [];
+		if (reqThs.length < 2) { return; } // not rendered yet
+
+		// th[0] = Category label, th[1..7] = day columns
+		var catW  = reqThs[0].offsetWidth;
+		var dayWs = [];
+		for (var i = 1; i <= nDays; i++) {
+			dayWs.push(reqThs[i] ? reqThs[i].offsetWidth : 120);
+		}
+
+		// Pin required table
+		applyColgroup(reqTable, [catW].concat(dayWs));
+
+		// Pin staff table — same shape as required (cat + 7 days + remove col)
+		var staffTable = document.getElementById('hhc-staff-table');
+		var staffThs   = staffTable ? staffTable.querySelectorAll('thead th') : [];
+		var removeW    = staffThs.length > nDays + 1 ? staffThs[staffThs.length - 1].offsetWidth : 44;
+		applyColgroup(staffTable, [catW].concat(dayWs).concat([removeW]));
+
+		// Pin summary table — cat col + (Rooms, D/S/A) × 7 days
+		// Split each day width into Rooms=60% and D/S/A=40% of dayW
+		var summaryTable = document.getElementById('hhc-summary-table');
+		var summaryCols  = [catW];
+		for (var j = 0; j < nDays; j++) {
+			var dw = dayWs[j];
+			summaryCols.push(Math.round(dw * 0.55)); // Rooms sub-col
+			summaryCols.push(Math.round(dw * 0.45)); // D/S/A sub-col
+		}
+		applyColgroup(summaryTable, summaryCols);
+	}
+
+	function applyColgroup(table, widths) {
+		if (!table) { return; }
+		// Remove existing colgroup
+		var existing = table.querySelector('colgroup');
+		if (existing) { table.removeChild(existing); }
+
+		var cg = document.createElement('colgroup');
+		widths.forEach(function (w) {
+			var col = document.createElement('col');
+			col.style.width = w + 'px';
+			cg.appendChild(col);
+		});
+		table.insertBefore(cg, table.firstChild);
+		table.style.tableLayout = 'fixed';
+		table.style.width = '100%';
 	}
 
 	function timeInput(catId, action, value) {
