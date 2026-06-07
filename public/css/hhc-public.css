@@ -345,6 +345,7 @@
 .hhc-required-table th:first-child {
 	text-align: left;
 	min-width: 140px;
+	padding-right: 12px;
 }
 
 .hhc-total-row {
@@ -364,10 +365,11 @@
 .hhc-staff-table .hhc-col-name {
 	text-align: left;
 	min-width: 150px;
+	padding-right: 12px;
 }
 
 .hhc-staff-name {
-	width: 130px;
+	width: 100%;
 	padding: 5px 8px;
 	border: 1px solid #ccc;
 	border-radius: 4px;

@@ -582,39 +582,38 @@
 	// =========================================================================
 
 	function syncTableColumns() {
-		var dates    = bookingsData.dates;
-		var nDays    = dates.length; // 7
+		var dates  = bookingsData.dates;
+		var nDays  = dates.length; // 7
 
-		// Let the required table (simplest structure: 1 col per day) set the day width.
-		// Measure its rendered day-column widths from the thead ths (skip first = category).
-		var reqTable = document.getElementById('hhc-required-table');
-		var reqThs   = reqTable ? reqTable.querySelectorAll('thead th') : [];
-		if (reqThs.length < 2) { return; } // not rendered yet
+		var reqTable     = document.getElementById('hhc-required-table');
+		var staffTable   = document.getElementById('hhc-staff-table');
+		var summaryTable = document.getElementById('hhc-summary-table');
+		if (!reqTable) { return; }
 
-		// th[0] = Category label, th[1..7] = day columns
-		var catW  = reqThs[0].offsetWidth;
+		// Fixed widths — category col kept tight, remove btn minimal
+		var catW    = 160;
+		var removeW = 36;
+
+		// Day columns share the remaining width equally based on the required table's total
+		var totalW  = reqTable.parentElement.offsetWidth || reqTable.offsetWidth;
+		var dayW    = Math.floor((totalW - catW) / nDays);
+
 		var dayWs = [];
-		for (var i = 1; i <= nDays; i++) {
-			dayWs.push(reqThs[i] ? reqThs[i].offsetWidth : 120);
-		}
+		for (var i = 0; i < nDays; i++) { dayWs.push(dayW); }
 
-		// Pin required table
+		// Required: cat + 7 days
 		applyColgroup(reqTable, [catW].concat(dayWs));
 
-		// Pin staff table — same shape as required (cat + 7 days + remove col)
-		var staffTable = document.getElementById('hhc-staff-table');
-		var staffThs   = staffTable ? staffTable.querySelectorAll('thead th') : [];
-		var removeW    = staffThs.length > nDays + 1 ? staffThs[staffThs.length - 1].offsetWidth : 44;
-		applyColgroup(staffTable, [catW].concat(dayWs).concat([removeW]));
+		// Staff: cat + 7 days + remove — give remove its fixed width, shrink last day col
+		var staffDayWs = dayWs.slice();
+		staffDayWs[staffDayWs.length - 1] = Math.max(60, dayW - removeW);
+		applyColgroup(staffTable, [catW].concat(staffDayWs).concat([removeW]));
 
-		// Pin summary table — cat col + (Rooms, D/S/A) × 7 days
-		// Split each day width into Rooms=60% and D/S/A=40% of dayW
-		var summaryTable = document.getElementById('hhc-summary-table');
-		var summaryCols  = [catW];
+		// Summary: cat + (Rooms + D/S/A) × 7 days
+		var summaryCols = [catW];
 		for (var j = 0; j < nDays; j++) {
-			var dw = dayWs[j];
-			summaryCols.push(Math.round(dw * 0.55)); // Rooms sub-col
-			summaryCols.push(Math.round(dw * 0.45)); // D/S/A sub-col
+			summaryCols.push(Math.round(dayW * 0.52)); // Rooms sub-col
+			summaryCols.push(Math.round(dayW * 0.48)); // D/S/A sub-col
 		}
 		applyColgroup(summaryTable, summaryCols);
 	}
