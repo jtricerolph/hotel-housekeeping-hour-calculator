@@ -150,11 +150,16 @@
 			html += '<tr class="hhc-cat-row-1">';
 			html += '<td class="hhc-cat-label" rowspan="3">' + esc(cat.name) + '</td>';
 
-			dates.forEach(function (date) {
+			dates.forEach(function (date, di) {
 				var d        = cat.days[date];
 				var occupied = d.stays + d.arrivals;
 				var vacant   = Math.max(0, cat.total_rooms - occupied);
 				var pickup   = getDisplayPickup(cat.id, date, occupied, cat.total_rooms);
+
+				// Pickup rooms from the previous day depart today
+				var prevDate      = dates[di - 1];
+				var prevOccupied  = prevDate ? (cat.days[prevDate].stays + cat.days[prevDate].arrivals) : 0;
+				var pickupFromPrev = prevDate ? getDisplayPickup(cat.id, prevDate, prevOccupied, cat.total_rooms) : 0;
 
 				html += '<td class="hhc-total-cell" rowspan="3">';
 				html += '<div class="hhc-rooms-num">' + d.total_servicing + '</div>';
@@ -170,7 +175,8 @@
 					(pickup >= vacant ? ' disabled' : '') + '>+</button>';
 				html += '</div></td>';
 
-				html += '<td class="hhc-breakdown-cell hhc-depart-row">' + d.departs + ' dep</td>';
+				var depTag = pickupFromPrev > 0 ? ' <span class="hhc-pickup-tag">(+' + pickupFromPrev + ')</span>' : '';
+				html += '<td class="hhc-breakdown-cell hhc-depart-row">' + d.departs + ' dep' + depTag + '</td>';
 			});
 			html += '</tr>';
 
@@ -184,7 +190,11 @@
 			// Row 3: arrivals
 			html += '<tr class="hhc-cat-row-3' + lastClass + '">';
 			dates.forEach(function (date) {
-				html += '<td class="hhc-breakdown-cell hhc-arrive-row">' + cat.days[date].arrivals + ' arr</td>';
+				var d        = cat.days[date];
+				var occupied = d.stays + d.arrivals;
+				var pickup   = getDisplayPickup(cat.id, date, occupied, cat.total_rooms);
+				var arrTag   = pickup > 0 ? ' <span class="hhc-pickup-tag">(+' + pickup + ')</span>' : '';
+				html += '<td class="hhc-breakdown-cell hhc-arrive-row">' + d.arrivals + ' arr' + arrTag + '</td>';
 			});
 			html += '</tr>';
 		});
