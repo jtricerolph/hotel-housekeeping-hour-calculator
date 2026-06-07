@@ -513,6 +513,13 @@
 	box-shadow: 0 0 0 2px rgba(44,62,80,0.12);
 }
 
+/* ---- Phantom column — invisible spacer matching staff remove-btn width ---- */
+.hhc-phantom-col {
+	padding: 0 !important;
+	border: none !important;
+	background: transparent !important;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 768px) {
 	.hhc-header {

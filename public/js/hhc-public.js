@@ -132,7 +132,7 @@
 		dates.forEach(function (date) {
 			html += '<th class="hhc-th-day" colspan="2">' + fmtDayHeader(date) + '</th>';
 		});
-		html += '</tr>';
+		html += '<th class="hhc-phantom-col" rowspan="2"></th></tr>';
 
 		// Header row 2
 		html += '<tr>';
@@ -193,7 +193,7 @@
 				var depTag = pickupFromPrev > 0 ? ' <span class="hhc-pickup-tag">(+' + pickupFromPrev + ')</span>' : '';
 				html += '<td class="hhc-breakdown-cell hhc-depart-row">' + d.departs + ' dep' + depTag + '</td>';
 			});
-			html += '</tr>';
+			html += '<td class="hhc-phantom-col" rowspan="3"></td></tr>';
 
 			// Row 2: stays
 			html += '<tr class="hhc-cat-row-2">';
@@ -252,7 +252,7 @@
 			var depTag = totals[date].pickupDepart > 0 ? ' <span class="hhc-pickup-tag">(+' + totals[date].pickupDepart + ')</span>' : '';
 			html += '<td class="hhc-breakdown-cell hhc-depart-row">' + totals[date].departs + ' dep' + depTag + '</td>';
 		});
-		html += '</tr><tr class="hhc-cat-row-2">';
+		html += '<td class="hhc-phantom-col" rowspan="3"></td></tr><tr class="hhc-cat-row-2">';
 		dates.forEach(function (date) {
 			html += '<td class="hhc-breakdown-cell hhc-stay-row">' + totals[date].stays + ' sta</td>';
 		});
@@ -406,7 +406,7 @@
 		dates.forEach(function (date) {
 			html += '<th>' + fmtDayHeader(date) + '</th>';
 		});
-		html += '</tr></thead>';
+		html += '<th class="hhc-phantom-col"></th></tr></thead>';
 
 		// Body: one row per category — booked hrs (+pickup hrs)
 		html += '<tbody>';
@@ -422,7 +422,7 @@
 				}
 				html += '<td>' + cell + '</td>';
 			});
-			html += '</tr>';
+			html += '<td class="hhc-phantom-col"></td></tr>';
 		});
 		html += '</tbody>';
 
@@ -434,21 +434,21 @@
 		dates.forEach(function (date) {
 			html += '<td>' + fmtHrsNum(required[date].booked) + '</td>';
 		});
-		html += '</tr>';
+		html += '<td class="hhc-phantom-col"></td></tr>';
 
 		html += '<tr class="hhc-req-summary-row hhc-req-pickup">';
 		html += '<td style="text-align:left">Pickup hrs</td>';
 		dates.forEach(function (date) {
 			html += '<td>' + (required[date].pickup > 0.001 ? fmtHrsNum(required[date].pickup) : '&mdash;') + '</td>';
 		});
-		html += '</tr>';
+		html += '<td class="hhc-phantom-col"></td></tr>';
 
 		html += '<tr class="hhc-req-summary-row hhc-req-general">';
 		html += '<td style="text-align:left">General HK tasks</td>';
 		dates.forEach(function (date) {
 			html += '<td>' + (required[date].general > 0.001 ? fmtHrsNum(required[date].general) : '&mdash;') + '</td>';
 		});
-		html += '</tr>';
+		html += '<td class="hhc-phantom-col"></td></tr>';
 
 		html += '<tr class="hhc-total-row">';
 		html += '<td style="text-align:left">Total Required</td>';
@@ -459,7 +459,7 @@
 			}
 			html += '<td id="hhc-req-total-' + date + '">' + cell + '</td>';
 		});
-		html += '</tr></tfoot>';
+		html += '<td class="hhc-phantom-col"></td></tr></tfoot>';
 
 		table.innerHTML = html;
 	}
@@ -590,31 +590,30 @@
 		var summaryTable = document.getElementById('hhc-summary-table');
 		if (!reqTable) { return; }
 
-		// Fixed widths — category col kept tight, remove btn minimal
+		// Fixed widths — all three tables share the same cat + day + phantom-remove layout
 		var catW    = 160;
 		var removeW = 36;
 
-		// Day columns share the remaining width equally based on the required table's total
-		var totalW  = reqTable.parentElement.offsetWidth || reqTable.offsetWidth;
-		var dayW    = Math.floor((totalW - catW) / nDays);
+		// Day cols share remaining width after cat and remove (phantom on req/summary)
+		var totalW = reqTable.parentElement.offsetWidth || reqTable.offsetWidth;
+		var dayW   = Math.floor((totalW - catW - removeW) / nDays);
 
 		var dayWs = [];
 		for (var i = 0; i < nDays; i++) { dayWs.push(dayW); }
 
-		// Required: cat + 7 days
-		applyColgroup(reqTable, [catW].concat(dayWs));
+		// Required: cat + 7 days + phantom col (hidden, matches remove width)
+		applyColgroup(reqTable, [catW].concat(dayWs).concat([removeW]));
 
-		// Staff: cat + 7 days + remove — give remove its fixed width, shrink last day col
-		var staffDayWs = dayWs.slice();
-		staffDayWs[staffDayWs.length - 1] = Math.max(60, dayW - removeW);
-		applyColgroup(staffTable, [catW].concat(staffDayWs).concat([removeW]));
+		// Staff: cat + 7 days + remove col (real)
+		applyColgroup(staffTable, [catW].concat(dayWs).concat([removeW]));
 
-		// Summary: cat + (Rooms + D/S/A) × 7 days
+		// Summary: cat + (Rooms + D/S/A) × 7 days + phantom col
 		var summaryCols = [catW];
 		for (var j = 0; j < nDays; j++) {
 			summaryCols.push(Math.round(dayW * 0.52)); // Rooms sub-col
 			summaryCols.push(Math.round(dayW * 0.48)); // D/S/A sub-col
 		}
+		summaryCols.push(removeW);
 		applyColgroup(summaryTable, summaryCols);
 	}
 
