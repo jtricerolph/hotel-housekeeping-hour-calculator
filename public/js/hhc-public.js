@@ -285,9 +285,7 @@
 
 				var decBtn = document.querySelector('.hhc-pickup-dec[data-cat="' + catId + '"][data-date="' + date + '"]');
 				var incBtn = document.querySelector('.hhc-pickup-inc[data-cat="' + catId + '"][data-date="' + date + '"]');
-				if (decBtn) { decBtn.disabled = (newVal <= 0); }
-				if (incBtn) { incBtn.disabled = (newVal >= vacant); }
-
+				renderSummaryTable();
 				renderRequiredTable();
 				recalcDiffRow();
 				debounce('pickup', savePickupData, 400);
