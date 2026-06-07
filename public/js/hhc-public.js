@@ -164,7 +164,8 @@
 				html += '<td class="hhc-total-cell" rowspan="3">';
 				html += '<div class="hhc-rooms-num">' + occupied +
 					(pickup > 0 ? '<span class="hhc-pickup-tag"> +' + pickup + '</span>' : '') + '</div>';
-				html += '<div class="hhc-occ-vac">' + vacant + ' vac</div>';
+				html += '<div class="hhc-occ-vac">' + vacant + ' vac' +
+					(pickup > 0 ? '<span class="hhc-pickup-tag"> -' + pickup + '</span>' : '') + '</div>';
 				html += '<div class="hhc-pickup-ctrl">';
 				html += '<button class="hhc-pickup-btn hhc-pickup-dec"' +
 					' data-cat="' + esc(cat.id) + '" data-date="' + date + '"' +
@@ -233,7 +234,8 @@
 			var pickupTotal = totals[date].pickupArrive;
 			html += '<td class="hhc-total-cell" rowspan="3"><div class="hhc-rooms-num">' + totals[date].occupied +
 				(pickupTotal > 0 ? '<span class="hhc-pickup-tag"> +' + pickupTotal + '</span>' : '') + '</div>' +
-				'<div class="hhc-occ-vac">' + totals[date].vacant + ' vac</div></td>';
+				'<div class="hhc-occ-vac">' + totals[date].vacant + ' vac' +
+					(pickupTotal > 0 ? '<span class="hhc-pickup-tag"> -' + pickupTotal + '</span>' : '') + '</div></td>';
 			var depTag = totals[date].pickupDepart > 0 ? ' <span class="hhc-pickup-tag">(+' + totals[date].pickupDepart + ')</span>' : '';
 			html += '<td class="hhc-breakdown-cell hhc-depart-row">' + totals[date].departs + ' dep' + depTag + '</td>';
 		});
