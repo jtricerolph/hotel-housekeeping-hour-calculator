@@ -162,7 +162,8 @@
 				var pickupFromPrev = prevDate ? getDisplayPickup(cat.id, prevDate, prevOccupied, cat.total_rooms) : 0;
 
 				html += '<td class="hhc-total-cell" rowspan="3">';
-				html += '<div class="hhc-rooms-num">' + d.total_servicing + '</div>';
+				html += '<div class="hhc-rooms-num">' + d.total_servicing +
+					(pickup > 0 ? '<span class="hhc-pickup-tag"> +' + pickup + '</span>' : '') + '</div>';
 				html += '<div class="hhc-occ-vac">' + occupied + ' occ (' + vacant + ' vac)</div>';
 				html += '<div class="hhc-pickup-ctrl">';
 				html += '<button class="hhc-pickup-btn hhc-pickup-dec"' +
