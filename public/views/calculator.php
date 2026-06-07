@@ -12,6 +12,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 		<div class="hhc-header-right">
 			<span class="hhc-save-status" id="hhc-save-status"></span>
+			<div class="hhc-week-nav">
+				<button class="hhc-btn hhc-btn-secondary" id="hhc-week-prev">&#8249; Prev</button>
+				<button class="hhc-btn hhc-btn-secondary" id="hhc-week-today">Today</button>
+				<button class="hhc-btn hhc-btn-secondary" id="hhc-week-next">Next &#8250;</button>
+				<input type="date" id="hhc-week-picker" class="hhc-date-picker" title="Jump to date">
+			</div>
 			<button class="hhc-btn hhc-btn-secondary" id="hhc-refresh">&#8635; Refresh Data</button>
 		</div>
 	</div>

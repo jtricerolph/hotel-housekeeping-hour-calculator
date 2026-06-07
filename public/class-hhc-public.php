@@ -16,8 +16,8 @@ class HHC_Public {
 			return;
 		}
 
-		wp_enqueue_style( 'hhc-public', HHC_PLUGIN_URL . 'public/css/hhc-public.css', array(), HHC_VERSION );
-		wp_enqueue_script( 'hhc-public', HHC_PLUGIN_URL . 'public/js/hhc-public.js', array(), HHC_VERSION, true );
+		wp_enqueue_style( 'hhc-public', HHC_PLUGIN_URL . 'public/css/hhc-public.css', array(), filemtime( HHC_PLUGIN_DIR . 'public/css/hhc-public.css' ) );
+		wp_enqueue_script( 'hhc-public', HHC_PLUGIN_URL . 'public/js/hhc-public.js', array(), filemtime( HHC_PLUGIN_DIR . 'public/js/hhc-public.js' ), true );
 		wp_localize_script(
 			'hhc-public',
 			'hhcData',

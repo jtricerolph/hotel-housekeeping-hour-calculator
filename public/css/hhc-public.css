@@ -42,6 +42,30 @@
 	gap: 12px;
 }
 
+.hhc-week-nav {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.hhc-date-picker {
+	padding: 7px 10px;
+	border: 1px solid #ccc;
+	border-radius: 6px;
+	font-size: 13px;
+	font-family: inherit;
+	color: #333;
+	background: #f0f0f0;
+	cursor: pointer;
+	height: 34px;
+	box-sizing: border-box;
+}
+.hhc-date-picker:focus {
+	outline: none;
+	border-color: #2c3e50;
+	box-shadow: 0 0 0 2px rgba(44,62,80,0.15);
+}
+
 /* ---- Buttons ---- */
 .hhc-btn {
 	display: inline-flex;
@@ -523,6 +547,7 @@ tr .hhc-phantom-col,
 	padding: 0 !important;
 	border: none !important;
 	background: transparent !important;
+	background-color: #fff !important;
 	width: 36px;
 	min-width: 36px;
 }

@@ -7,6 +7,7 @@
 	// =========================================================================
 
 	var bookingsData = null;  // {dates:[], categories:[]}
+	var startDate    = null;  // 'YYYY-MM-DD' — first day of displayed week, null = today
 	var settings = {
 		time_requirements: {},
 		staff_data:        [],
@@ -27,9 +28,45 @@
 		document.getElementById('hhc-refresh').addEventListener('click', function () {
 			loadAll(true);
 		});
+		document.getElementById('hhc-week-prev').addEventListener('click', function () {
+			startDate = offsetDate(startDate || todayString(), -7);
+			document.getElementById('hhc-week-picker').value = startDate;
+			loadAll(true);
+		});
+		document.getElementById('hhc-week-next').addEventListener('click', function () {
+			startDate = offsetDate(startDate || todayString(), 7);
+			document.getElementById('hhc-week-picker').value = startDate;
+			loadAll(true);
+		});
+		document.getElementById('hhc-week-today').addEventListener('click', function () {
+			startDate = null;
+			document.getElementById('hhc-week-picker').value = '';
+			loadAll(true);
+		});
+		document.getElementById('hhc-week-picker').addEventListener('change', function () {
+			if (this.value) {
+				startDate = this.value;
+				loadAll(true);
+			}
+		});
 		document.getElementById('hhc-add-staff').addEventListener('click', addStaffRow);
 		document.getElementById('hhc-add-task').addEventListener('click', addTaskRow);
 		loadAll(false);
+	}
+
+	function todayString() {
+		var d = new Date();
+		return d.getFullYear() + '-' +
+			String(d.getMonth() + 1).padStart(2, '0') + '-' +
+			String(d.getDate()).padStart(2, '0');
+	}
+
+	function offsetDate(dateStr, days) {
+		var d = new Date(dateStr + 'T00:00:00');
+		d.setDate(d.getDate() + days);
+		return d.getFullYear() + '-' +
+			String(d.getMonth() + 1).padStart(2, '0') + '-' +
+			String(d.getDate()).padStart(2, '0');
 	}
 
 	function loadAll(force) {
@@ -57,6 +94,7 @@
 		fd.append('action', 'hhc_get_bookings_data');
 		fd.append('nonce',  hhcData.nonce);
 		fd.append('force_refresh', force ? '1' : '0');
+		if (startDate) { fd.append('start_date', startDate); }
 
 		return fetch(hhcData.ajax_url, { method: 'POST', body: fd })
 			.then(function (r) { return r.json(); })
@@ -167,7 +205,7 @@
 				html += '<div class="hhc-rooms-num">' + occupied +
 					(pickup > 0 ? '<span class="hhc-pickup-tag"> +' + pickup + '</span>' : '') + '</div>';
 				html += '<div class="hhc-occ-vac">' + vacant + ' vac' +
-					(pickup > 0 ? '<span class="hhc-pickup-tag"> -' + pickup + '</span>' : '') + '</div>';
+					(pickup > 0 ? '<span class="hhc-pickup-tag"> (' + (vacant - pickup) + ')</span>' : '') + '</div>';
 				var hint      = d.pickup_hint || 0;
 				var leadDays  = d.pickup_lead !== undefined ? d.pickup_lead : 0;
 				var priorOcc  = d.prior_occ !== undefined ? d.prior_occ : 0;
@@ -191,14 +229,14 @@
 				html += '</div></td>';
 
 				var depTag = pickupFromPrev > 0 ? ' <span class="hhc-pickup-tag">(+' + pickupFromPrev + ')</span>' : '';
-				html += '<td class="hhc-breakdown-cell hhc-depart-row">' + d.departs + ' dep' + depTag + '</td>';
+				html += '<td class="hhc-breakdown-cell hhc-depart-row">' + d.departs + 'd' + depTag + '</td>';
 			});
 			html += '<td class="hhc-phantom-col" rowspan="3"></td></tr>';
 
 			// Row 2: stays
 			html += '<tr class="hhc-cat-row-2">';
 			dates.forEach(function (date) {
-				html += '<td class="hhc-breakdown-cell hhc-stay-row">' + cat.days[date].stays + ' sta</td>';
+				html += '<td class="hhc-breakdown-cell hhc-stay-row">' + cat.days[date].stays + 's</td>';
 			});
 			html += '</tr>';
 
@@ -209,7 +247,7 @@
 				var occupied = d.stays + d.arrivals;
 				var pickup   = getDisplayPickup(cat.id, date, occupied, cat.total_rooms);
 				var arrTag   = pickup > 0 ? ' <span class="hhc-pickup-tag">(+' + pickup + ')</span>' : '';
-				html += '<td class="hhc-breakdown-cell hhc-arrive-row">' + d.arrivals + ' arr' + arrTag + '</td>';
+				html += '<td class="hhc-breakdown-cell hhc-arrive-row">' + d.arrivals + 'a' + arrTag + '</td>';
 			});
 			html += '</tr>';
 		});
@@ -248,18 +286,18 @@
 			html += '<td class="hhc-total-cell" rowspan="3"><div class="hhc-rooms-num">' + totals[date].occupied +
 				(pickupTotal > 0 ? '<span class="hhc-pickup-tag"> +' + pickupTotal + '</span>' : '') + '</div>' +
 				'<div class="hhc-occ-vac">' + totals[date].vacant + ' vac' +
-					(pickupTotal > 0 ? '<span class="hhc-pickup-tag"> -' + pickupTotal + '</span>' : '') + '</div></td>';
+					(pickupTotal > 0 ? '<span class="hhc-pickup-tag"> (' + (totals[date].vacant - pickupTotal) + ')</span>' : '') + '</div></td>';
 			var depTag = totals[date].pickupDepart > 0 ? ' <span class="hhc-pickup-tag">(+' + totals[date].pickupDepart + ')</span>' : '';
-			html += '<td class="hhc-breakdown-cell hhc-depart-row">' + totals[date].departs + ' dep' + depTag + '</td>';
+			html += '<td class="hhc-breakdown-cell hhc-depart-row">' + totals[date].departs + 'd' + depTag + '</td>';
 		});
 		html += '<td class="hhc-phantom-col" rowspan="3"></td></tr><tr class="hhc-cat-row-2">';
 		dates.forEach(function (date) {
-			html += '<td class="hhc-breakdown-cell hhc-stay-row">' + totals[date].stays + ' sta</td>';
+			html += '<td class="hhc-breakdown-cell hhc-stay-row">' + totals[date].stays + 's</td>';
 		});
 		html += '</tr><tr class="hhc-cat-row-3">';
 		dates.forEach(function (date) {
 			var arrTag = totals[date].pickupArrive > 0 ? ' <span class="hhc-pickup-tag">(+' + totals[date].pickupArrive + ')</span>' : '';
-			html += '<td class="hhc-breakdown-cell hhc-arrive-row">' + totals[date].arrivals + ' arr' + arrTag + '</td>';
+			html += '<td class="hhc-breakdown-cell hhc-arrive-row">' + totals[date].arrivals + 'a' + arrTag + '</td>';
 		});
 		html += '</tr></tfoot>';
 
@@ -320,6 +358,7 @@
 				var incBtn = document.querySelector('.hhc-pickup-inc[data-cat="' + catId + '"][data-date="' + date + '"]');
 				renderSummaryTable();
 				renderRequiredTable();
+				syncTableColumns();
 				recalcDiffRow();
 				debounce('pickup', savePickupData, 400);
 			});

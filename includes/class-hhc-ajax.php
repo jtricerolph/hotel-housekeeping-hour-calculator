@@ -49,9 +49,18 @@ class HHC_Ajax {
 	public function get_bookings_data() {
 		$this->verify_public();
 
-		$force     = ! empty( $_POST['force_refresh'] ) && $_POST['force_refresh'] === '1';
-		$today     = current_time( 'Y-m-d' );
-		$cache_key = 'hhc_bookings_' . $today;
+		$force = ! empty( $_POST['force_refresh'] ) && $_POST['force_refresh'] === '1';
+		$today = current_time( 'Y-m-d' );
+
+		// Allow a client-supplied start date (future week navigation)
+		$raw_start = isset( $_POST['start_date'] ) ? sanitize_text_field( $_POST['start_date'] ) : '';
+		if ( $raw_start && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $raw_start ) ) {
+			$week_start = $raw_start;
+		} else {
+			$week_start = $today;
+		}
+
+		$cache_key = 'hhc_bookings_' . $week_start;
 
 		if ( ! $force ) {
 			$cached = get_transient( $cache_key );
@@ -63,9 +72,9 @@ class HHC_Ajax {
 
 		$api = new HHC_Newbook_API();
 
-		// Fetch 8 days back through +6 days: prior week for pickup hints + this week
-		$fetch_from = date( 'Y-m-d', strtotime( $today . ' -8 days' ) );
-		$end_date   = date( 'Y-m-d', strtotime( $today . ' +6 days' ) );
+		// Fetch 8 days before week_start (prior-week pickup hints) through end of week
+		$fetch_from = date( 'Y-m-d', strtotime( $week_start . ' -8 days' ) );
+		$end_date   = date( 'Y-m-d', strtotime( $week_start . ' +6 days' ) );
 
 		$bookings_resp = $api->fetch_bookings_range( $fetch_from, $end_date );
 		if ( isset( $bookings_resp['error'] ) || ! isset( $bookings_resp['data'] ) ) {
@@ -96,10 +105,10 @@ class HHC_Ajax {
 			$category_map[ $cat_key ]['total_rooms']++;
 		}
 
-		// 7-day window starting today
+		// 7-day window starting from week_start
 		$dates = array();
 		for ( $i = 0; $i < 7; $i++ ) {
-			$dates[] = date( 'Y-m-d', strtotime( $today . ' +' . $i . ' days' ) );
+			$dates[] = date( 'Y-m-d', strtotime( $week_start . ' +' . $i . ' days' ) );
 		}
 
 		// day_data[$date][$cat_key] = ['departs'=>0,'stays'=>0,'arrivals'=>0,'rooms'=>[]]
