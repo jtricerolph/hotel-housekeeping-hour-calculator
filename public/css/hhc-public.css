@@ -370,6 +370,8 @@
 
 .hhc-staff-name {
 	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
 	padding: 5px 8px;
 	border: 1px solid #ccc;
 	border-radius: 4px;
@@ -514,10 +516,27 @@
 }
 
 /* ---- Phantom column — invisible spacer matching staff remove-btn width ---- */
-.hhc-phantom-col {
+.hhc-phantom-col,
+tr .hhc-phantom-col,
+.hhc-total-row .hhc-phantom-col,
+.hhc-req-summary-row .hhc-phantom-col {
 	padding: 0 !important;
 	border: none !important;
 	background: transparent !important;
+	width: 36px;
+	min-width: 36px;
+}
+
+/* ---- Staff table column sizing ---- */
+.hhc-staff-table .hhc-col-remove {
+	width: 44px;
+	min-width: 44px;
+	padding-left: 8px;
+}
+
+.hhc-staff-table td:first-child,
+.hhc-staff-table th:first-child {
+	overflow: hidden;
 }
 
 /* ---- Responsive ---- */
