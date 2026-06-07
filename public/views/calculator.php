@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<div class="hhc-section" id="hhc-summary-section" style="display:none">
 		<div class="hhc-section-header">
 			<h3>7-Day Occupancy Summary</h3>
-			<p class="hhc-section-desc">Rooms = unique rooms serviced. D&nbsp;/&nbsp;S&nbsp;/&nbsp;A = departures / stays / arrivals. Occ/Vac = occupied tonight vs vacant. Use &minus;&nbsp;/&nbsp;+ to add expected pickup bookings.</p>
+			<p class="hhc-section-desc">Big number = occupied tonight, small = vacant. D&nbsp;/&nbsp;S&nbsp;/&nbsp;A = departures / stays / arrivals. Use &minus;&nbsp;/&nbsp;+ to add expected pickup bookings.</p>
 		</div>
 		<div class="hhc-table-scroll">
 			<table class="hhc-table hhc-summary-table" id="hhc-summary-table"></table>
