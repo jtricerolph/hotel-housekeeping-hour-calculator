@@ -201,16 +201,25 @@
 		});
 		html += '</tbody>';
 
-		// Footer: totals (no pickup controls in total row)
+		// Footer: totals
 		var totals = {};
-		dates.forEach(function (date) {
-			totals[date] = { servicing: 0, departs: 0, stays: 0, arrivals: 0 };
+		dates.forEach(function (date, di) {
+			totals[date] = { servicing: 0, departs: 0, stays: 0, arrivals: 0, pickupArrive: 0, pickupDepart: 0 };
 			cats.forEach(function (cat) {
-				var d = cat.days[date];
-				totals[date].servicing += d.total_servicing;
-				totals[date].departs   += d.departs;
-				totals[date].stays     += d.stays;
-				totals[date].arrivals  += d.arrivals;
+				var d        = cat.days[date];
+				var occupied = d.stays + d.arrivals;
+				var pickup   = getDisplayPickup(cat.id, date, occupied, cat.total_rooms);
+
+				var prevDate     = dates[di - 1];
+				var prevOccupied = prevDate ? (cat.days[prevDate].stays + cat.days[prevDate].arrivals) : 0;
+				var prevPickup   = prevDate ? getDisplayPickup(cat.id, prevDate, prevOccupied, cat.total_rooms) : 0;
+
+				totals[date].servicing    += d.total_servicing;
+				totals[date].departs      += d.departs;
+				totals[date].stays        += d.stays;
+				totals[date].arrivals     += d.arrivals;
+				totals[date].pickupArrive += pickup;
+				totals[date].pickupDepart += prevPickup;
 			});
 		});
 
@@ -218,8 +227,11 @@
 		html += '<tr class="hhc-cat-row-1">';
 		html += '<td class="hhc-cat-label" rowspan="3" style="font-style:italic">Total</td>';
 		dates.forEach(function (date) {
-			html += '<td class="hhc-total-cell" rowspan="3"><div class="hhc-rooms-num">' + totals[date].servicing + '</div></td>';
-			html += '<td class="hhc-breakdown-cell hhc-depart-row">' + totals[date].departs + ' dep</td>';
+			var pickupTotal = totals[date].pickupArrive;
+			html += '<td class="hhc-total-cell" rowspan="3"><div class="hhc-rooms-num">' + totals[date].servicing +
+				(pickupTotal > 0 ? '<span class="hhc-pickup-tag"> +' + pickupTotal + '</span>' : '') + '</div></td>';
+			var depTag = totals[date].pickupDepart > 0 ? ' <span class="hhc-pickup-tag">(+' + totals[date].pickupDepart + ')</span>' : '';
+			html += '<td class="hhc-breakdown-cell hhc-depart-row">' + totals[date].departs + ' dep' + depTag + '</td>';
 		});
 		html += '</tr><tr class="hhc-cat-row-2">';
 		dates.forEach(function (date) {
@@ -227,7 +239,8 @@
 		});
 		html += '</tr><tr class="hhc-cat-row-3">';
 		dates.forEach(function (date) {
-			html += '<td class="hhc-breakdown-cell hhc-arrive-row">' + totals[date].arrivals + ' arr</td>';
+			var arrTag = totals[date].pickupArrive > 0 ? ' <span class="hhc-pickup-tag">(+' + totals[date].pickupArrive + ')</span>' : '';
+			html += '<td class="hhc-breakdown-cell hhc-arrive-row">' + totals[date].arrivals + ' arr' + arrTag + '</td>';
 		});
 		html += '</tr></tfoot>';
 
