@@ -23,32 +23,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	<div class="hhc-error" id="hhc-error" style="display:none"></div>
 
-	<!-- ===== TIME REQUIREMENTS ===== -->
-	<div class="hhc-section" id="hhc-time-section" style="display:none">
-		<div class="hhc-section-header">
-			<h3>Time Requirements per Room</h3>
-			<p class="hhc-section-desc">Set how many minutes each room type takes per action. Changes are saved automatically.</p>
-		</div>
-		<div class="hhc-table-wrap">
-			<table class="hhc-table hhc-time-table" id="hhc-time-table">
-				<thead>
-					<tr>
-						<th class="hhc-col-cat">Room Category</th>
-						<th class="hhc-col-action hhc-depart-col">Depart (mins)</th>
-						<th class="hhc-col-action hhc-stay-col">Stay (mins)</th>
-						<th class="hhc-col-action hhc-arrive-col">Arrive (mins)</th>
-					</tr>
-				</thead>
-				<tbody id="hhc-time-tbody"></tbody>
-			</table>
-		</div>
-	</div>
-
 	<!-- ===== 7-DAY SUMMARY ===== -->
 	<div class="hhc-section" id="hhc-summary-section" style="display:none">
 		<div class="hhc-section-header">
 			<h3>7-Day Occupancy Summary</h3>
-			<p class="hhc-section-desc">Rooms = unique rooms needing servicing. D&nbsp;/&nbsp;S&nbsp;/&nbsp;A = departures / stays / arrivals (back-to-back rooms appear in both D and A).</p>
+			<p class="hhc-section-desc">Rooms = unique rooms serviced. D&nbsp;/&nbsp;S&nbsp;/&nbsp;A = departures / stays / arrivals. Occ/Vac = occupied tonight vs vacant. Use &minus;&nbsp;/&nbsp;+ to add expected pickup bookings.</p>
 		</div>
 		<div class="hhc-table-scroll">
 			<table class="hhc-table hhc-summary-table" id="hhc-summary-table"></table>
@@ -59,7 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<div class="hhc-section" id="hhc-required-section" style="display:none">
 		<div class="hhc-section-header">
 			<h3>Required Housekeeping Hours</h3>
-			<p class="hhc-section-desc">Calculated from room counts &times; minutes per action &divide; 60.</p>
+			<p class="hhc-section-desc">Calculated from room counts &times; minutes per action &divide; 60. Pickup rooms counted as arrivals.</p>
 		</div>
 		<div class="hhc-table-scroll">
 			<table class="hhc-table hhc-required-table" id="hhc-required-table"></table>
@@ -81,6 +60,50 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 		<div class="hhc-staff-controls">
 			<button class="hhc-btn hhc-btn-add" id="hhc-add-staff">+ Add Staff Member</button>
+		</div>
+	</div>
+
+	<!-- ===== GENERAL HOUSEKEEPING TASKS ===== -->
+	<div class="hhc-section" id="hhc-general-tasks-section" style="display:none">
+		<div class="hhc-section-header">
+			<h3>General Housekeeping Tasks</h3>
+			<p class="hhc-section-desc">Non-room tasks with fixed weekly time allocations. Enter <strong>minutes</strong> per day. These are added to the required hours totals.</p>
+		</div>
+		<div class="hhc-table-scroll">
+			<table class="hhc-table hhc-general-tasks-table" id="hhc-general-tasks-table">
+				<thead>
+					<tr>
+						<th style="text-align:left;min-width:180px">Task</th>
+						<th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th>
+						<th style="width:40px"></th>
+					</tr>
+				</thead>
+				<tbody id="hhc-tasks-tbody"></tbody>
+			</table>
+		</div>
+		<div class="hhc-staff-controls">
+			<button class="hhc-btn hhc-btn-add" id="hhc-add-task">+ Add Task</button>
+		</div>
+	</div>
+
+	<!-- ===== TIME REQUIREMENTS (settings — moved to bottom) ===== -->
+	<div class="hhc-section" id="hhc-time-section" style="display:none">
+		<div class="hhc-section-header">
+			<h3>Time Requirements per Room</h3>
+			<p class="hhc-section-desc">Set how many minutes each room type takes per action. Changes are saved automatically.</p>
+		</div>
+		<div class="hhc-table-wrap">
+			<table class="hhc-table hhc-time-table" id="hhc-time-table">
+				<thead>
+					<tr>
+						<th class="hhc-col-cat">Room Category</th>
+						<th class="hhc-col-action hhc-depart-col">Depart (mins)</th>
+						<th class="hhc-col-action hhc-stay-col">Stay (mins)</th>
+						<th class="hhc-col-action hhc-arrive-col">Arrive (mins)</th>
+					</tr>
+				</thead>
+				<tbody id="hhc-time-tbody"></tbody>
+			</table>
 		</div>
 	</div>
 

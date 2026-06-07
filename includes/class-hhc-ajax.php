@@ -8,10 +8,12 @@ class HHC_Ajax {
 	public function __construct() {
 		// Public AJAX — no login required (page access acts as the gate)
 		$public_pairs = array(
-			'hhc_get_bookings_data'     => 'get_bookings_data',
-			'hhc_get_settings'          => 'get_settings',
+			'hhc_get_bookings_data'      => 'get_bookings_data',
+			'hhc_get_settings'           => 'get_settings',
 			'hhc_save_time_requirements' => 'save_time_requirements',
-			'hhc_save_staff_data'       => 'save_staff_data',
+			'hhc_save_staff_data'        => 'save_staff_data',
+			'hhc_save_pickup_data'       => 'save_pickup_data',
+			'hhc_save_general_tasks'     => 'save_general_tasks',
 		);
 		foreach ( $public_pairs as $action => $method ) {
 			add_action( 'wp_ajax_' . $action, array( $this, $method ) );
@@ -233,20 +235,23 @@ class HHC_Ajax {
 	public function get_settings() {
 		$this->verify_public();
 
-		$time_reqs = get_option( 'hhc_time_requirements', array() );
-		$staff     = get_option( 'hhc_staff_data', array() );
-		$tolerance = absint( get_option( 'hhc_tolerance_minutes', 30 ) );
+		$time_reqs   = get_option( 'hhc_time_requirements', array() );
+		$staff       = get_option( 'hhc_staff_data', array() );
+		$tolerance   = absint( get_option( 'hhc_tolerance_minutes', 30 ) );
+		$pickup      = get_option( 'hhc_pickup_data', array() );
+		$gen_tasks   = get_option( 'hhc_general_tasks', array() );
 
-		// PHP empty arrays encode as JSON [] not {} — cast to object so JS receives {} not []
-		if ( empty( $time_reqs ) ) {
-			$time_reqs = new stdClass();
-		}
+		// PHP empty arrays encode as JSON [] not {} — cast to object so JS receives {}
+		if ( empty( $time_reqs ) ) { $time_reqs = new stdClass(); }
+		if ( empty( $pickup ) )    { $pickup    = new stdClass(); }
 
 		wp_send_json_success(
 			array(
 				'time_requirements' => $time_reqs,
 				'staff_data'        => $staff,
 				'tolerance_minutes' => $tolerance,
+				'pickup_data'       => $pickup,
+				'general_tasks'     => $gen_tasks,
 			)
 		);
 	}
@@ -304,6 +309,63 @@ class HHC_Ajax {
 		}
 
 		update_option( 'hhc_staff_data', $clean );
+		wp_send_json_success( array( 'message' => 'Saved' ) );
+	}
+
+	public function save_pickup_data() {
+		$this->verify_public();
+
+		$raw  = isset( $_POST['pickup_data'] ) ? $_POST['pickup_data'] : '';
+		$data = json_decode( stripslashes( $raw ), true );
+
+		if ( ! is_array( $data ) ) {
+			wp_send_json_error( array( 'message' => 'Invalid data' ) );
+			return;
+		}
+
+		$clean = array();
+		foreach ( $data as $cat_id => $dates ) {
+			$cat_id = sanitize_text_field( $cat_id );
+			if ( ! is_array( $dates ) ) { continue; }
+			$clean[ $cat_id ] = array();
+			foreach ( $dates as $date => $vals ) {
+				$date = sanitize_text_field( $date );
+				$clean[ $cat_id ][ $date ] = array(
+					'count' => absint( isset( $vals['count'] ) ? $vals['count'] : 0 ),
+					'total' => absint( isset( $vals['total'] ) ? $vals['total'] : 0 ),
+				);
+			}
+		}
+
+		update_option( 'hhc_pickup_data', $clean );
+		wp_send_json_success( array( 'message' => 'Saved' ) );
+	}
+
+	public function save_general_tasks() {
+		$this->verify_public();
+
+		$raw  = isset( $_POST['general_tasks'] ) ? $_POST['general_tasks'] : '';
+		$data = json_decode( stripslashes( $raw ), true );
+
+		if ( ! is_array( $data ) ) {
+			wp_send_json_error( array( 'message' => 'Invalid data' ) );
+			return;
+		}
+
+		$days  = array( 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun' );
+		$clean = array();
+		foreach ( $data as $task ) {
+			if ( ! isset( $task['name'] ) ) { continue; }
+			$name = sanitize_text_field( $task['name'] );
+			if ( empty( $name ) ) { continue; }
+			$hrs = array();
+			foreach ( $days as $day ) {
+				$hrs[ $day ] = absint( isset( $task['hours'][ $day ] ) ? $task['hours'][ $day ] : 0 );
+			}
+			$clean[] = array( 'name' => $name, 'hours' => $hrs );
+		}
+
+		update_option( 'hhc_general_tasks', $clean );
 		wp_send_json_success( array( 'message' => 'Saved' ) );
 	}
 

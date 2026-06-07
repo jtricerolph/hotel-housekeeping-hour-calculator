@@ -256,12 +256,68 @@
 
 /* Total rooms cell */
 .hhc-total-cell {
+	background: #eaf0fb;
+	border-right: 2px solid #ccc;
+	min-width: 68px;
+	vertical-align: top;
+	padding: 8px 6px !important;
+}
+
+.hhc-rooms-num {
 	font-size: 22px;
 	font-weight: 700;
 	color: #2c3e50;
-	background: #eaf0fb;
-	border-right: 2px solid #ccc;
-	min-width: 52px;
+	line-height: 1.1;
+}
+
+.hhc-occ-vac {
+	font-size: 10px;
+	color: #888;
+	font-weight: 500;
+	margin: 3px 0;
+	white-space: nowrap;
+}
+
+/* ---- Pickup controls ---- */
+.hhc-pickup-ctrl {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	border-top: 1px solid #c8d8ee;
+	padding-top: 5px;
+	margin-top: 3px;
+}
+
+.hhc-pickup-btn {
+	width: 20px;
+	height: 20px;
+	border: 1px solid #b0c4de;
+	background: #dce8f5;
+	cursor: pointer;
+	font-size: 13px;
+	line-height: 18px;
+	border-radius: 3px;
+	padding: 0;
+	color: #2c3e50;
+	flex-shrink: 0;
+	text-align: center;
+}
+.hhc-pickup-btn:hover:not(:disabled) {
+	background: #c0d8ef;
+	border-color: #2c3e50;
+}
+.hhc-pickup-btn:disabled {
+	opacity: 0.3;
+	cursor: not-allowed;
+}
+
+.hhc-pickup-num {
+	font-size: 13px;
+	font-weight: 700;
+	color: #c0392b;
+	min-width: 18px;
+	text-align: center;
 }
 
 /* Breakdown cells */
@@ -399,6 +455,60 @@
 
 .hhc-staff-controls {
 	margin-top: 8px;
+}
+
+/* ---- Required hours: pickup tag ---- */
+.hhc-pickup-tag {
+	font-size: 11px;
+	color: #c0392b;
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+/* ---- Required hours: summary rows (booked / pickup / general) ---- */
+.hhc-req-summary-row td {
+	font-size: 11px;
+	font-style: italic;
+	background: #f5f7fa;
+	border-top: 1px dashed #ccc;
+}
+.hhc-req-summary-row td:first-child {
+	color: #555;
+	font-weight: 600;
+}
+.hhc-req-pickup td       { color: #c0392b; }
+.hhc-req-general td      { color: #2980b9; }
+
+/* ---- General Housekeeping Tasks table ---- */
+.hhc-general-tasks-table {
+	min-width: 680px;
+}
+
+.hhc-task-name {
+	width: 160px;
+	padding: 5px 8px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 13px;
+}
+
+.hhc-task-mins {
+	width: 50px;
+	padding: 5px 4px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 13px;
+	text-align: center;
+	-moz-appearance: textfield;
+}
+.hhc-task-mins::-webkit-inner-spin-button,
+.hhc-task-mins::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+.hhc-task-name:focus,
+.hhc-task-mins:focus {
+	outline: none;
+	border-color: #2c3e50;
+	box-shadow: 0 0 0 2px rgba(44,62,80,0.12);
 }
 
 /* ---- Responsive ---- */
