@@ -63,11 +63,11 @@ class HHC_Ajax {
 
 		$api = new HHC_Newbook_API();
 
-		// Query yesterday through +6 days to capture today's departures from prior arrivals
-		$yesterday = date( 'Y-m-d', strtotime( $today . ' -1 day' ) );
-		$end_date  = date( 'Y-m-d', strtotime( $today . ' +6 days' ) );
+		// Fetch 8 days back through +6 days: prior week for pickup hints + this week
+		$fetch_from = date( 'Y-m-d', strtotime( $today . ' -8 days' ) );
+		$end_date   = date( 'Y-m-d', strtotime( $today . ' +6 days' ) );
 
-		$bookings_resp = $api->fetch_bookings_range( $yesterday, $end_date );
+		$bookings_resp = $api->fetch_bookings_range( $fetch_from, $end_date );
 		if ( isset( $bookings_resp['error'] ) || ! isset( $bookings_resp['data'] ) ) {
 			$msg = isset( $bookings_resp['error'] ) ? $bookings_resp['error'] : 'No booking data returned';
 			wp_send_json_error( array( 'message' => $msg ) );
@@ -79,8 +79,8 @@ class HHC_Ajax {
 
 		// category_id differs between sites_list and bookings_list for the same category.
 		// Use normalised category_name as the stable grouping key throughout.
-		$category_map  = array(); // cat_key => ['name' => ..., 'total_rooms' => ...]
-		$site_to_key   = array(); // site_id  => cat_key
+		$category_map = array(); // cat_key => ['name' => ..., 'total_rooms' => ...]
+		$site_to_key  = array(); // site_id  => cat_key
 
 		foreach ( $sites as $site ) {
 			$site_id  = isset( $site['site_id'] ) ? $site['site_id'] : '';
@@ -102,11 +102,18 @@ class HHC_Ajax {
 			$dates[] = date( 'Y-m-d', strtotime( $today . ' +' . $i . ' days' ) );
 		}
 
-		// day_data[$date][$cat_key] = ['departs'=>0, 'stays'=>0, 'arrivals'=>0, 'rooms'=>[]]
+		// day_data[$date][$cat_key] = ['departs'=>0,'stays'=>0,'arrivals'=>0,'rooms'=>[]]
 		$day_data = array();
 		foreach ( $dates as $d ) {
 			$day_data[ $d ] = array();
 		}
+
+		// prior_arrivals[$cat_key][$day_of_week] = [['arrival_date'=>..., 'placed_date'=>...], ...]
+		// day_of_week: 0=Sun … 6=Sat (PHP date('w'))
+		$prior_arrivals = array();
+
+		$today_ts     = strtotime( $today );
+		$yesterday_ts = $today_ts - 86400;
 
 		foreach ( $bookings_resp['data'] as $booking ) {
 			$site_id = isset( $booking['site_id'] ) ? $booking['site_id'] : '';
@@ -114,7 +121,7 @@ class HHC_Ajax {
 				continue;
 			}
 
-			// Resolve category name — prefer booking field, fall back to site lookup
+			// Resolve category
 			if ( ! empty( $booking['category_name'] ) ) {
 				$cat_name = trim( $booking['category_name'] );
 			} elseif ( isset( $site_to_key[ $site_id ] ) ) {
@@ -135,10 +142,11 @@ class HHC_Ajax {
 				continue;
 			}
 
-			// substr avoids strtotime timezone shifting the date part
 			$arrival_date   = substr( $arrival_str, 0, 10 );
 			$departure_date = substr( $departure_str, 0, 10 );
+			$arrival_ts     = strtotime( $arrival_date );
 
+			// ---- This-week day_data ----
 			foreach ( $dates as $date ) {
 				$is_arriving  = ( $arrival_date === $date );
 				$is_departing = ( $departure_date === $date );
@@ -157,24 +165,42 @@ class HHC_Ajax {
 					);
 				}
 
-				if ( $is_departing ) {
-					$day_data[ $date ][ $cat_key ]['departs']++;
-				}
-				if ( $is_staying ) {
-					$day_data[ $date ][ $cat_key ]['stays']++;
-				}
-				if ( $is_arriving ) {
-					$day_data[ $date ][ $cat_key ]['arrivals']++;
-				}
-				// Unique room count — a back-to-back room counts as 1 unit of work
+				if ( $is_departing ) { $day_data[ $date ][ $cat_key ]['departs']++; }
+				if ( $is_staying )   { $day_data[ $date ][ $cat_key ]['stays']++; }
+				if ( $is_arriving )  { $day_data[ $date ][ $cat_key ]['arrivals']++; }
 				$day_data[ $date ][ $cat_key ]['rooms'][ $site_id ] = true;
 			}
+
+			// ---- Prior-week arrival pickup hints ----
+			// Only consider arrivals that fell strictly before today
+			if ( $arrival_ts >= $today_ts ) {
+				continue;
+			}
+
+			$placed_str  = isset( $booking['booking_placed'] ) ? $booking['booking_placed'] : '';
+			$placed_date = $placed_str ? substr( $placed_str, 0, 10 ) : '';
+			if ( empty( $placed_date ) ) {
+				continue;
+			}
+
+			$dow = (int) date( 'w', $arrival_ts ); // 0=Sun … 6=Sat
+
+			if ( ! isset( $prior_arrivals[ $cat_key ] ) ) {
+				$prior_arrivals[ $cat_key ] = array();
+			}
+			if ( ! isset( $prior_arrivals[ $cat_key ][ $dow ] ) ) {
+				$prior_arrivals[ $cat_key ][ $dow ] = array();
+			}
+			$prior_arrivals[ $cat_key ][ $dow ][] = array(
+				'arrival_date' => $arrival_date,
+				'placed_date'  => $placed_date,
+			);
 		}
 
 		// Apply saved sort order (stored as cat_keys), append any new categories
-		$saved_order    = get_option( 'hhc_category_order', array() );
-		$excluded       = get_option( 'hhc_excluded_categories', array() );
-		$ordered_keys   = array();
+		$saved_order  = get_option( 'hhc_category_order', array() );
+		$excluded     = get_option( 'hhc_excluded_categories', array() );
+		$ordered_keys = array();
 		foreach ( $saved_order as $key ) {
 			if ( isset( $category_map[ $key ] ) ) {
 				$ordered_keys[] = $key;
@@ -197,13 +223,34 @@ class HHC_Ajax {
 			}
 			$cat_days = array();
 			foreach ( $dates as $date ) {
+				$date_ts  = strtotime( $date );
+				// Lead time = days from today until this date (0 = today, 1 = tomorrow …)
+				$lead_days = (int) round( ( $date_ts - $today_ts ) / 86400 );
+				$dow       = (int) date( 'w', $date_ts );
+
+				// Count prior-week arrivals on the same weekday that were placed
+				// within the same lead-time window (placed <= lead_days before arrival)
+				$hint_count = 0;
+				if ( isset( $prior_arrivals[ $cat_key ][ $dow ] ) ) {
+					foreach ( $prior_arrivals[ $cat_key ][ $dow ] as $pa ) {
+						$arr_ts    = strtotime( $pa['arrival_date'] );
+						$placed_ts = strtotime( $pa['placed_date'] );
+						$days_before = (int) round( ( $arr_ts - $placed_ts ) / 86400 );
+						if ( $days_before <= $lead_days ) {
+							$hint_count++;
+						}
+					}
+				}
+
 				if ( isset( $day_data[ $date ][ $cat_key ] ) ) {
-					$d            = $day_data[ $date ][ $cat_key ];
+					$d = $day_data[ $date ][ $cat_key ];
 					$cat_days[ $date ] = array(
 						'total_servicing' => count( $d['rooms'] ),
 						'departs'         => $d['departs'],
 						'stays'           => $d['stays'],
 						'arrivals'        => $d['arrivals'],
+						'pickup_hint'     => $hint_count,
+						'pickup_lead'     => $lead_days,
 					);
 				} else {
 					$cat_days[ $date ] = array(
@@ -211,6 +258,8 @@ class HHC_Ajax {
 						'departs'         => 0,
 						'stays'           => 0,
 						'arrivals'        => 0,
+						'pickup_hint'     => $hint_count,
+						'pickup_lead'     => $lead_days,
 					);
 				}
 			}

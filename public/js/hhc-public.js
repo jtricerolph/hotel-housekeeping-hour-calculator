@@ -166,6 +166,13 @@
 					(pickup > 0 ? '<span class="hhc-pickup-tag"> +' + pickup + '</span>' : '') + '</div>';
 				html += '<div class="hhc-occ-vac">' + vacant + ' vac' +
 					(pickup > 0 ? '<span class="hhc-pickup-tag"> -' + pickup + '</span>' : '') + '</div>';
+				var hint      = d.pickup_hint || 0;
+				var leadDays  = d.pickup_lead !== undefined ? d.pickup_lead : 0;
+				var tooltip   = hint > 0
+					? 'Last week: ' + hint + ' ' + cat.name + ' room' + (hint === 1 ? '' : 's') +
+					  ' picked up within ' + leadDays + ' day' + (leadDays === 1 ? '' : 's') + ' of arrival'
+					: 'No prior-week pickup data for this lead time';
+
 				html += '<div class="hhc-pickup-ctrl">';
 				html += '<button class="hhc-pickup-btn hhc-pickup-dec"' +
 					' data-cat="' + esc(cat.id) + '" data-date="' + date + '"' +
@@ -174,7 +181,8 @@
 					' data-cat="' + esc(cat.id) + '" data-date="' + date + '">' + pickup + '</span>';
 				html += '<button class="hhc-pickup-btn hhc-pickup-inc"' +
 					' data-cat="' + esc(cat.id) + '" data-date="' + date + '"' +
-					(pickup >= vacant ? ' disabled' : '') + '>+</button>';
+					(pickup >= vacant ? ' disabled' : '') +
+					' title="' + esc(tooltip) + '">+</button>';
 				html += '</div></td>';
 
 				var depTag = pickupFromPrev > 0 ? ' <span class="hhc-pickup-tag">(+' + pickupFromPrev + ')</span>' : '';
