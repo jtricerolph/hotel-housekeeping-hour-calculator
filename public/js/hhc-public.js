@@ -318,7 +318,7 @@
 		// Room-based hours
 		bookingsData.categories.forEach(function (cat) {
 			var req = settings.time_requirements[cat.id] || { depart: 0, stay: 0, arrive: 0 };
-			dates.forEach(function (date) {
+			dates.forEach(function (date, di) {
 				var d           = cat.days[date];
 				var occupied    = d.stays + d.arrivals;
 				var pickupCount = getDisplayPickup(cat.id, date, occupied, cat.total_rooms);
@@ -327,13 +327,26 @@
 				                 (d.stays    * (req.stay   || 0)) +
 				                 (d.arrivals * (req.arrive || 0));
 				var bookedHrs  = bookedMins / 60;
-				var pickupHrs  = pickupCount * (req.arrive || 0) / 60;
 
-				result[date].by_cat[cat.id]        = bookedHrs;
-				result[date].pickup_by_cat[cat.id] = pickupHrs;
+				// Pickup arrive hours land on this date
+				var pickupArriveHrs = pickupCount * (req.arrive || 0) / 60;
+
+				if (!result[date].pickup_by_cat[cat.id]) { result[date].pickup_by_cat[cat.id] = 0; }
+				result[date].by_cat[cat.id] = bookedHrs;
+				result[date].pickup_by_cat[cat.id] += pickupArriveHrs;
 				result[date].booked += bookedHrs;
-				result[date].pickup += pickupHrs;
-				result[date].total  += bookedHrs + pickupHrs;
+				result[date].pickup += pickupArriveHrs;
+				result[date].total  += bookedHrs + pickupArriveHrs;
+
+				// Pickup depart hours land on the NEXT date (they check out the following day)
+				var nextDate = dates[di + 1];
+				if (nextDate && pickupCount > 0) {
+					var pickupDepartHrs = pickupCount * (req.depart || 0) / 60;
+					if (!result[nextDate].pickup_by_cat[cat.id]) { result[nextDate].pickup_by_cat[cat.id] = 0; }
+					result[nextDate].pickup_by_cat[cat.id] += pickupDepartHrs;
+					result[nextDate].pickup += pickupDepartHrs;
+					result[nextDate].total  += pickupDepartHrs;
+				}
 			});
 		});
 
