@@ -168,10 +168,13 @@
 					(pickup > 0 ? '<span class="hhc-pickup-tag"> -' + pickup + '</span>' : '') + '</div>';
 				var hint      = d.pickup_hint || 0;
 				var leadDays  = d.pickup_lead !== undefined ? d.pickup_lead : 0;
+				var priorOcc  = d.prior_occ !== undefined ? d.prior_occ : 0;
+				var priorVac  = d.prior_vac !== undefined ? d.prior_vac : 0;
+				var occLine   = 'Last ' + getDayName(date) + ': finished with ' + priorOcc + ' occ (' + priorVac + ' vac) ' + cat.name;
 				var tooltip   = hint > 0
-					? 'Last week: ' + hint + ' ' + cat.name + ' room' + (hint === 1 ? '' : 's') +
+					? occLine + ' — ' + hint + ' room' + (hint === 1 ? '' : 's') +
 					  ' picked up within ' + leadDays + ' day' + (leadDays === 1 ? '' : 's') + ' of arrival'
-					: 'Last week: no late pickups on this weekday';
+					: occLine + ' — no late pickups';
 
 				html += '<div class="hhc-pickup-ctrl">';
 				html += '<button class="hhc-pickup-btn hhc-pickup-dec"' +

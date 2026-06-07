@@ -112,6 +112,9 @@ class HHC_Ajax {
 		// day_of_week: 0=Sun … 6=Sat (PHP date('w'))
 		$prior_arrivals = array();
 
+		// prior_occ[$cat_key][$date] = ['occupied'=>N, 'rooms'=>[site_id=>true]]
+		$prior_occ = array();
+
 		$today_ts     = strtotime( $today );
 		$yesterday_ts = $today_ts - 86400;
 
@@ -171,12 +174,29 @@ class HHC_Ajax {
 				$day_data[ $date ][ $cat_key ]['rooms'][ $site_id ] = true;
 			}
 
-			// ---- Prior-week arrival pickup hints ----
-			// Only consider arrivals that fell strictly before today
+			// ---- Prior-week data (arrivals before today only) ----
 			if ( $arrival_ts >= $today_ts ) {
 				continue;
 			}
 
+			// Prior-week occupancy: count this booking as occupied on each prior date it spans
+			$departure_ts = strtotime( $departure_date );
+			for ( $i = 0; $i < 7; $i++ ) {
+				$prior_date    = date( 'Y-m-d', $today_ts - ( 7 - $i ) * 86400 );
+				$prior_date_ts = strtotime( $prior_date );
+				// Occupied on prior_date = arrived on or before it AND departs after it
+				if ( $arrival_ts <= $prior_date_ts && $departure_ts > $prior_date_ts ) {
+					if ( ! isset( $prior_occ[ $cat_key ] ) ) {
+						$prior_occ[ $cat_key ] = array();
+					}
+					if ( ! isset( $prior_occ[ $cat_key ][ $prior_date ] ) ) {
+						$prior_occ[ $cat_key ][ $prior_date ] = array( 'rooms' => array() );
+					}
+					$prior_occ[ $cat_key ][ $prior_date ]['rooms'][ $site_id ] = true;
+				}
+			}
+
+			// Prior-week arrival pickup hints (keyed by weekday of arrival)
 			$placed_str  = isset( $booking['booking_placed'] ) ? $booking['booking_placed'] : '';
 			$placed_date = $placed_str ? substr( $placed_str, 0, 10 ) : '';
 			if ( empty( $placed_date ) ) {
@@ -233,14 +253,22 @@ class HHC_Ajax {
 				$hint_count = 0;
 				if ( isset( $prior_arrivals[ $cat_key ][ $dow ] ) ) {
 					foreach ( $prior_arrivals[ $cat_key ][ $dow ] as $pa ) {
-						$arr_ts    = strtotime( $pa['arrival_date'] );
-						$placed_ts = strtotime( $pa['placed_date'] );
+						$arr_ts      = strtotime( $pa['arrival_date'] );
+						$placed_ts   = strtotime( $pa['placed_date'] );
 						$days_before = (int) round( ( $arr_ts - $placed_ts ) / 86400 );
 						if ( $days_before <= $lead_days ) {
 							$hint_count++;
 						}
 					}
 				}
+
+				// Prior-week occupancy on the equivalent date (7 days ago)
+				$prior_date     = date( 'Y-m-d', $date_ts - 7 * 86400 );
+				$prior_occ_count = isset( $prior_occ[ $cat_key ][ $prior_date ] )
+					? count( $prior_occ[ $cat_key ][ $prior_date ]['rooms'] )
+					: 0;
+				$total_rooms     = $category_map[ $cat_key ]['total_rooms'];
+				$prior_vac_count = max( 0, $total_rooms - $prior_occ_count );
 
 				if ( isset( $day_data[ $date ][ $cat_key ] ) ) {
 					$d = $day_data[ $date ][ $cat_key ];
@@ -251,6 +279,8 @@ class HHC_Ajax {
 						'arrivals'        => $d['arrivals'],
 						'pickup_hint'     => $hint_count,
 						'pickup_lead'     => $lead_days,
+						'prior_occ'       => $prior_occ_count,
+						'prior_vac'       => $prior_vac_count,
 					);
 				} else {
 					$cat_days[ $date ] = array(
@@ -260,6 +290,8 @@ class HHC_Ajax {
 						'arrivals'        => 0,
 						'pickup_hint'     => $hint_count,
 						'pickup_lead'     => $lead_days,
+						'prior_occ'       => $prior_occ_count,
+						'prior_vac'       => $prior_vac_count,
 					);
 				}
 			}
