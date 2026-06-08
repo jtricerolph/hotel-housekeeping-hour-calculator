@@ -67,6 +67,11 @@
 	padding-top: 2px;
 }
 
+.hhc-last-viewed-saved-label {
+	margin-left: 8px;
+	color: #888;
+}
+
 .hhc-last-viewed-display {
 	font-weight: 600;
 	color: #333;

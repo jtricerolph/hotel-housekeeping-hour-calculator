@@ -13,8 +13,9 @@
 		staff_data:        [],
 		tolerance_minutes: 30
 	};
-	var pickupData   = {};  // catId → date → {count, total}
-	var generalTasks = [];  // [{name, hours:{Mon:N,...}}]
+	var pickupData        = {};   // catId → date → {count, total}
+	var generalTasks      = [];   // [{name, hours:{Mon:N,...}}]
+	var savedLastReviewed = null; // 'YYYY-MM-DD' — DB-persisted last-reviewed date
 
 	var DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -25,43 +26,49 @@
 	// =========================================================================
 
 	function init() {
-		// last-viewed picker is seeded from DB via fetchSettings() → updateLastViewedBtn()
+		// lvPicker controls the delta reference date — separate from the DB-saved last-reviewed date
 		var lvPicker = document.getElementById('hhc-last-viewed');
 
+		// Changing the picker just reruns the query with a different delta reference, no DB save
 		lvPicker.addEventListener('change', function () {
-			if (this.value) {
-				saveLastReviewed(this.value);
-				updateLastViewedBtn();
-				loadAll(true);
-			}
+			if (this.value) { loadAll(true); }
 		});
 
+		// "Update to Now" — save today to DB, but leave picker on whatever user has selected
 		document.getElementById('hhc-update-last-viewed').addEventListener('click', function () {
-			markLastReviewed();
+			stampLastReviewed();
 		});
 
+		// Refresh — stamp today, reload
 		document.getElementById('hhc-refresh').addEventListener('click', function () {
-			markLastReviewed();
+			stampLastReviewed();
+			loadAll(true);
 		});
+
+		// Week nav — stamp today, reload at new week (picker stays as-is)
 		document.getElementById('hhc-week-prev').addEventListener('click', function () {
 			startDate = offsetDate(startDate || todayString(), -7);
 			document.getElementById('hhc-week-picker').value = startDate;
-			markLastReviewed();
+			stampLastReviewed();
+			loadAll(true);
 		});
 		document.getElementById('hhc-week-next').addEventListener('click', function () {
 			startDate = offsetDate(startDate || todayString(), 7);
 			document.getElementById('hhc-week-picker').value = startDate;
-			markLastReviewed();
+			stampLastReviewed();
+			loadAll(true);
 		});
 		document.getElementById('hhc-week-today').addEventListener('click', function () {
 			startDate = null;
 			document.getElementById('hhc-week-picker').value = '';
-			markLastReviewed();
+			stampLastReviewed();
+			loadAll(true);
 		});
 		document.getElementById('hhc-week-picker').addEventListener('change', function () {
 			if (this.value) {
 				startDate = this.value;
-				markLastReviewed();
+				stampLastReviewed();
+				loadAll(true);
 			}
 		});
 		document.getElementById('hhc-add-staff').addEventListener('click', function () {
@@ -75,21 +82,14 @@
 		loadAll(false);
 	}
 
-	function markLastReviewed() {
-		var today = todayString();
-		saveLastReviewed(today);
-		var lvPicker = document.getElementById('hhc-last-viewed');
-		lvPicker.value = today;
-		updateLastViewedBtn();
-		loadAll(true);
-	}
-
 	function stampLastReviewed() {
-		saveLastReviewed(todayString());
-		updateLastViewedBtn();
+		var today = todayString();
+		savedLastReviewed = today;
+		saveLastReviewedToDb(today);
+		updateSavedDisplay();
 	}
 
-	function saveLastReviewed(date) {
+	function saveLastReviewedToDb(date) {
 		var fd = new FormData();
 		fd.append('action', 'hhc_save_last_reviewed');
 		fd.append('nonce',  hhcData.nonce);
@@ -97,12 +97,11 @@
 		fetch(hhcData.ajax_url, { method: 'POST', body: fd });
 	}
 
-	function updateLastViewedBtn() {
+	function updateSavedDisplay() {
 		var display = document.getElementById('hhc-last-viewed-display');
 		if (!display) { return; }
-		var val = document.getElementById('hhc-last-viewed').value;
-		if (!val) { display.textContent = ''; return; }
-		var d = new Date(val + 'T00:00:00');
+		if (!savedLastReviewed) { display.textContent = ''; return; }
+		var d = new Date(savedLastReviewed + 'T00:00:00');
 		var fmt = String(d.getDate()).padStart(2, '0') + '/' +
 			String(d.getMonth() + 1).padStart(2, '0') + '/' +
 			String(d.getFullYear()).slice(2);
@@ -185,9 +184,11 @@
 
 				// Sync last-reviewed from DB (shared across devices)
 				if (resp.data.last_reviewed) {
+					savedLastReviewed = resp.data.last_reviewed;
+					// Only seed the picker on first load (when it has no value yet)
 					var lvPicker = document.getElementById('hhc-last-viewed');
-					lvPicker.value = resp.data.last_reviewed;
-					updateLastViewedBtn();
+					if (!lvPicker.value) { lvPicker.value = resp.data.last_reviewed; }
+					updateSavedDisplay();
 				}
 			});
 	}
