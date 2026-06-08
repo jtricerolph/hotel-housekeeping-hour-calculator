@@ -25,44 +25,88 @@
 	// =========================================================================
 
 	function init() {
-		// Initialise last-viewed picker from localStorage, defaulting to yesterday
+		// last-viewed picker is seeded from DB via fetchSettings() → updateLastViewedBtn()
 		var lvPicker = document.getElementById('hhc-last-viewed');
-		var storedLv = localStorage.getItem('hhc_last_viewed');
-		lvPicker.value = storedLv || offsetDate(todayString(), -1);
+
 		lvPicker.addEventListener('change', function () {
 			if (this.value) {
-				localStorage.setItem('hhc_last_viewed', this.value);
+				saveLastReviewed(this.value);
+				updateLastViewedBtn();
 				loadAll(true);
 			}
 		});
 
+		document.getElementById('hhc-update-last-viewed').addEventListener('click', function () {
+			markLastReviewed();
+		});
+
 		document.getElementById('hhc-refresh').addEventListener('click', function () {
-			loadAll(true);
+			markLastReviewed();
 		});
 		document.getElementById('hhc-week-prev').addEventListener('click', function () {
 			startDate = offsetDate(startDate || todayString(), -7);
 			document.getElementById('hhc-week-picker').value = startDate;
-			loadAll(true);
+			markLastReviewed();
 		});
 		document.getElementById('hhc-week-next').addEventListener('click', function () {
 			startDate = offsetDate(startDate || todayString(), 7);
 			document.getElementById('hhc-week-picker').value = startDate;
-			loadAll(true);
+			markLastReviewed();
 		});
 		document.getElementById('hhc-week-today').addEventListener('click', function () {
 			startDate = null;
 			document.getElementById('hhc-week-picker').value = '';
-			loadAll(true);
+			markLastReviewed();
 		});
 		document.getElementById('hhc-week-picker').addEventListener('change', function () {
 			if (this.value) {
 				startDate = this.value;
-				loadAll(true);
+				markLastReviewed();
 			}
 		});
-		document.getElementById('hhc-add-staff').addEventListener('click', addStaffRow);
-		document.getElementById('hhc-add-task').addEventListener('click', addTaskRow);
+		document.getElementById('hhc-add-staff').addEventListener('click', function () {
+			stampLastReviewed();
+			addStaffRow();
+		});
+		document.getElementById('hhc-add-task').addEventListener('click', function () {
+			stampLastReviewed();
+			addTaskRow();
+		});
 		loadAll(false);
+	}
+
+	function markLastReviewed() {
+		var today = todayString();
+		saveLastReviewed(today);
+		var lvPicker = document.getElementById('hhc-last-viewed');
+		lvPicker.value = today;
+		updateLastViewedBtn();
+		loadAll(true);
+	}
+
+	function stampLastReviewed() {
+		saveLastReviewed(todayString());
+		updateLastViewedBtn();
+	}
+
+	function saveLastReviewed(date) {
+		var fd = new FormData();
+		fd.append('action', 'hhc_save_last_reviewed');
+		fd.append('nonce',  hhcData.nonce);
+		fd.append('date',   date);
+		fetch(hhcData.ajax_url, { method: 'POST', body: fd });
+	}
+
+	function updateLastViewedBtn() {
+		var btn = document.getElementById('hhc-update-last-viewed');
+		if (!btn) { return; }
+		var val = document.getElementById('hhc-last-viewed').value;
+		if (!val) { return; }
+		var d = new Date(val + 'T00:00:00');
+		var fmt = String(d.getDate()).padStart(2, '0') + '/' +
+			String(d.getMonth() + 1).padStart(2, '0') + '/' +
+			String(d.getFullYear()).slice(2);
+		btn.textContent = 'Update Last Viewed (' + fmt + ')';
 	}
 
 	function todayString() {
@@ -138,6 +182,13 @@
 				var pd = resp.data.pickup_data;
 				pickupData   = (pd && !Array.isArray(pd)) ? pd : {};
 				generalTasks = resp.data.general_tasks || [];
+
+				// Sync last-reviewed from DB (shared across devices)
+				if (resp.data.last_reviewed) {
+					var lvPicker = document.getElementById('hhc-last-viewed');
+					lvPicker.value = resp.data.last_reviewed;
+					updateLastViewedBtn();
+				}
 			});
 	}
 
@@ -416,6 +467,7 @@
 				renderRequiredTable();
 				syncTableColumns();
 				recalcDiffRow();
+				stampLastReviewed();
 				debounce('pickup', savePickupData, 400);
 			});
 		});
@@ -603,6 +655,7 @@
 				collectGeneralTasks();
 				renderRequiredTable();
 				recalcDiffRow();
+				stampLastReviewed();
 				debounce('tasks', saveGeneralTasks, 400);
 			};
 		});
@@ -612,6 +665,7 @@
 				collectGeneralTasks();
 				renderRequiredTable();
 				recalcDiffRow();
+				stampLastReviewed();
 				debounce('tasks', saveGeneralTasks, 400);
 			});
 			el.addEventListener('change', function () {
@@ -622,6 +676,7 @@
 
 		document.querySelectorAll('#hhc-tasks-tbody .hhc-task-name').forEach(function (el) {
 			el.addEventListener('input', function () {
+				stampLastReviewed();
 				debounce('tasks', saveGeneralTasks, 400);
 			});
 			el.addEventListener('change', function () {
@@ -745,6 +800,7 @@
 		settings.time_requirements[cat][action] = value;
 		renderRequiredTable();
 		recalcDiffRow();
+		stampLastReviewed();
 		debounce('req-' + cat + '-' + action, function () { saveTimeField(cat, action, value); }, 400);
 	}
 
@@ -846,6 +902,7 @@
 					var row = btn.closest('tr');
 					if (row) { row.parentNode.removeChild(row); }
 					recalcDiffRow();
+					stampLastReviewed();
 					debounce('staff', saveStaffData, 400);
 				};
 			}
@@ -854,6 +911,7 @@
 		document.querySelectorAll('.hhc-staff-hours').forEach(function (el) {
 			el.oninput = function () {
 				recalcDiffRow();
+				stampLastReviewed();
 				debounce('staff', saveStaffData, 400);
 			};
 			el.onchange = function () {
@@ -863,7 +921,10 @@
 		});
 
 		document.querySelectorAll('.hhc-staff-name').forEach(function (el) {
-			el.oninput = function () { debounce('staff', saveStaffData, 400); };
+			el.oninput = function () {
+				stampLastReviewed();
+				debounce('staff', saveStaffData, 400);
+			};
 			el.onchange = function () { saveStaffData(); };
 		});
 	}
