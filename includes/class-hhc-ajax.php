@@ -60,7 +60,15 @@ class HHC_Ajax {
 			$week_start = $today;
 		}
 
-		$cache_key = 'hhc_bookings_' . $week_start;
+		// Last-viewed date for delta calculations (defaults to yesterday)
+		$raw_lv = isset( $_POST['last_viewed'] ) ? sanitize_text_field( $_POST['last_viewed'] ) : '';
+		if ( $raw_lv && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $raw_lv ) ) {
+			$last_viewed = $raw_lv;
+		} else {
+			$last_viewed = date( 'Y-m-d', strtotime( $today . ' -1 day' ) );
+		}
+
+		$cache_key = 'hhc_bookings_' . $week_start . '_' . $last_viewed;
 
 		if ( ! $force ) {
 			$cached = get_transient( $cache_key );
@@ -76,12 +84,18 @@ class HHC_Ajax {
 		$fetch_from = date( 'Y-m-d', strtotime( $week_start . ' -8 days' ) );
 		$end_date   = date( 'Y-m-d', strtotime( $week_start . ' +6 days' ) );
 
+		// Main occupancy fetch — list_type 'staying' returns all active bookings overlapping the period
 		$bookings_resp = $api->fetch_bookings_range( $fetch_from, $end_date );
 		if ( isset( $bookings_resp['error'] ) || ! isset( $bookings_resp['data'] ) ) {
 			$msg = isset( $bookings_resp['error'] ) ? $bookings_resp['error'] : 'No booking data returned';
 			wp_send_json_error( array( 'message' => $msg ) );
 			return;
 		}
+
+		// Delta fetch — list_type 'all' to include cancellations, scoped to last_viewed→end_date
+		$delta_resp = $api->fetch_bookings_delta( $last_viewed, $end_date );
+		$delta_bookings = ( ! isset( $delta_resp['error'] ) && isset( $delta_resp['data'] ) )
+			? $delta_resp['data'] : array();
 
 		$sites_resp = $api->fetch_sites_list();
 		$sites      = isset( $sites_resp['data'] ) ? $sites_resp['data'] : array();
@@ -111,11 +125,24 @@ class HHC_Ajax {
 			$dates[] = date( 'Y-m-d', strtotime( $week_start . ' +' . $i . ' days' ) );
 		}
 
+		// Booking statuses considered "active" (contribute to occupancy counts)
+		$active_statuses    = array( 'Confirmed', 'Unconfirmed', 'Arrived', 'Departed' );
+		// Booking statuses considered "cancelled" (contribute to delta cancellation count)
+		$cancelled_statuses = array( 'Cancelled', 'No Show' );
+
 		// day_data[$date][$cat_key] = ['departs'=>0,'stays'=>0,'arrivals'=>0,'rooms'=>[]]
 		$day_data = array();
 		foreach ( $dates as $d ) {
 			$day_data[ $d ] = array();
 		}
+
+		// delta_data[$date][$cat_key] = ['new'=>0,'cancelled'=>0]
+		// Counts bookings placed/cancelled since $last_viewed for each display date
+		$delta_data = array();
+		foreach ( $dates as $d ) {
+			$delta_data[ $d ] = array();
+		}
+		$last_viewed_ts = strtotime( $last_viewed );
 
 		// prior_arrivals[$cat_key][$day_of_week] = [['arrival_date'=>..., 'placed_date'=>...], ...]
 		// day_of_week: 0=Sun … 6=Sat (PHP date('w'))
@@ -226,6 +253,53 @@ class HHC_Ajax {
 			);
 		}
 
+		// ---- Delta processing (separate 'all' list fetch) ----
+		foreach ( $delta_bookings as $booking ) {
+			$site_id = isset( $booking['site_id'] ) ? $booking['site_id'] : '';
+			if ( empty( $site_id ) ) { continue; }
+
+			$cat_name = ! empty( $booking['category_name'] ) ? trim( $booking['category_name'] ) : 'Unknown';
+			$cat_key  = strtolower( $cat_name );
+
+			$arrival_str   = isset( $booking['booking_arrival'] )   ? $booking['booking_arrival']   : '';
+			$departure_str = isset( $booking['booking_departure'] ) ? $booking['booking_departure'] : '';
+			if ( empty( $arrival_str ) || empty( $departure_str ) ) { continue; }
+
+			$arrival_date   = substr( $arrival_str,   0, 10 );
+			$departure_date = substr( $departure_str, 0, 10 );
+
+			$status       = isset( $booking['booking_status'] ) ? trim( $booking['booking_status'] ) : '';
+			$is_active    = in_array( $status, $active_statuses, true );
+			$is_cancelled = in_array( $status, $cancelled_statuses, true );
+
+			$placed_str    = isset( $booking['booking_placed'] )    ? $booking['booking_placed']    : '';
+			$cancelled_str = isset( $booking['booking_cancelled'] ) ? $booking['booking_cancelled'] : '';
+			$placed_ts     = $placed_str    ? strtotime( substr( $placed_str,    0, 10 ) ) : 0;
+			$cancelled_ts  = $cancelled_str ? strtotime( substr( $cancelled_str, 0, 10 ) ) : 0;
+
+			$is_new_since       = $is_active    && $placed_ts    && $placed_ts    >= $last_viewed_ts;
+			$is_cancelled_since = $is_cancelled && $cancelled_ts && $cancelled_ts >= $last_viewed_ts;
+
+			if ( ! $is_new_since && ! $is_cancelled_since ) { continue; }
+
+			foreach ( $dates as $date ) {
+				$is_arriving = ( $arrival_date === $date );
+				$is_staying  = ( $arrival_date < $date && $departure_date > $date );
+
+				// Only count dates where booking contributes to occupied (arriving or staying)
+				if ( ! $is_arriving && ! $is_staying ) { continue; }
+
+				if ( ! isset( $delta_data[ $date ][ $cat_key ] ) ) {
+					$delta_data[ $date ][ $cat_key ] = array( 'new' => 0, 'cancelled' => 0 );
+				}
+				if ( $is_new_since ) {
+					$delta_data[ $date ][ $cat_key ]['new']++;
+				} elseif ( $is_cancelled_since ) {
+					$delta_data[ $date ][ $cat_key ]['cancelled']++;
+				}
+			}
+		}
+
 		// Apply saved sort order (stored as cat_keys), append any new categories
 		$saved_order  = get_option( 'hhc_category_order', array() );
 		$excluded     = get_option( 'hhc_excluded_categories', array() );
@@ -279,28 +353,36 @@ class HHC_Ajax {
 				$total_rooms     = $category_map[ $cat_key ]['total_rooms'];
 				$prior_vac_count = max( 0, $total_rooms - $prior_occ_count );
 
+				$delta       = isset( $delta_data[ $date ][ $cat_key ] ) ? $delta_data[ $date ][ $cat_key ] : array();
+				$delta_new   = isset( $delta['new'] ) ? $delta['new'] : 0;
+				$delta_canc  = isset( $delta['cancelled'] ) ? $delta['cancelled'] : 0;
+
 				if ( isset( $day_data[ $date ][ $cat_key ] ) ) {
 					$d = $day_data[ $date ][ $cat_key ];
 					$cat_days[ $date ] = array(
-						'total_servicing' => count( $d['rooms'] ),
-						'departs'         => $d['departs'],
-						'stays'           => $d['stays'],
-						'arrivals'        => $d['arrivals'],
-						'pickup_hint'     => $hint_count,
-						'pickup_lead'     => $lead_days,
-						'prior_occ'       => $prior_occ_count,
-						'prior_vac'       => $prior_vac_count,
+						'total_servicing'  => count( $d['rooms'] ),
+						'departs'          => $d['departs'],
+						'stays'            => $d['stays'],
+						'arrivals'         => $d['arrivals'],
+						'pickup_hint'      => $hint_count,
+						'pickup_lead'      => $lead_days,
+						'prior_occ'        => $prior_occ_count,
+						'prior_vac'        => $prior_vac_count,
+						'delta_new'        => $delta_new,
+						'delta_cancelled'  => $delta_canc,
 					);
 				} else {
 					$cat_days[ $date ] = array(
-						'total_servicing' => 0,
-						'departs'         => 0,
-						'stays'           => 0,
-						'arrivals'        => 0,
-						'pickup_hint'     => $hint_count,
-						'pickup_lead'     => $lead_days,
-						'prior_occ'       => $prior_occ_count,
-						'prior_vac'       => $prior_vac_count,
+						'total_servicing'  => 0,
+						'departs'          => 0,
+						'stays'            => 0,
+						'arrivals'         => 0,
+						'pickup_hint'      => $hint_count,
+						'pickup_lead'      => $lead_days,
+						'prior_occ'        => $prior_occ_count,
+						'prior_vac'        => $prior_vac_count,
+						'delta_new'        => $delta_new,
+						'delta_cancelled'  => $delta_canc,
 					);
 				}
 			}
@@ -314,8 +396,9 @@ class HHC_Ajax {
 		}
 
 		$result = array(
-			'dates'      => $dates,
-			'categories' => $categories_out,
+			'dates'       => $dates,
+			'categories'  => $categories_out,
+			'last_viewed' => $last_viewed,
 		);
 
 		set_transient( $cache_key, $result, 5 * MINUTE_IN_SECONDS );
@@ -349,25 +432,24 @@ class HHC_Ajax {
 	public function save_time_requirements() {
 		$this->verify_public();
 
-		$raw  = isset( $_POST['time_requirements'] ) ? $_POST['time_requirements'] : '';
-		$data = json_decode( stripslashes( $raw ), true );
+		$cat    = isset( $_POST['cat'] ) ? sanitize_text_field( $_POST['cat'] ) : '';
+		$action = isset( $_POST['act'] ) ? sanitize_text_field( $_POST['act'] ) : '';
+		$value  = isset( $_POST['val'] ) ? absint( $_POST['val'] ) : 0;
 
-		if ( ! is_array( $data ) ) {
+		$valid_actions = array( 'depart', 'stay', 'arrive' );
+		if ( empty( $cat ) || ! in_array( $action, $valid_actions, true ) ) {
 			wp_send_json_error( array( 'message' => 'Invalid data' ) );
 			return;
 		}
 
-		$clean = array();
-		foreach ( $data as $cat_id => $actions ) {
-			$cat_id          = sanitize_text_field( $cat_id );
-			$clean[ $cat_id ] = array(
-				'depart' => isset( $actions['depart'] ) ? absint( $actions['depart'] ) : 0,
-				'stay'   => isset( $actions['stay'] ) ? absint( $actions['stay'] ) : 0,
-				'arrive' => isset( $actions['arrive'] ) ? absint( $actions['arrive'] ) : 0,
-			);
+		// Read-merge-write: only update the single changed field
+		$stored = get_option( 'hhc_time_requirements', array() );
+		if ( ! isset( $stored[ $cat ] ) ) {
+			$stored[ $cat ] = array( 'depart' => 0, 'stay' => 0, 'arrive' => 0 );
 		}
+		$stored[ $cat ][ $action ] = $value;
 
-		update_option( 'hhc_time_requirements', $clean );
+		update_option( 'hhc_time_requirements', $stored );
 		wp_send_json_success( array( 'message' => 'Saved' ) );
 	}
 

@@ -32,8 +32,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<!-- ===== 7-DAY SUMMARY ===== -->
 	<div class="hhc-section" id="hhc-summary-section" style="display:none">
 		<div class="hhc-section-header">
-			<h3>7-Day Occupancy Summary</h3>
-			<p class="hhc-section-desc">Big number = occupied tonight, small = vacant. D&nbsp;/&nbsp;S&nbsp;/&nbsp;A = departures / stays / arrivals. Use &minus;&nbsp;/&nbsp;+ to add expected pickup bookings.</p>
+			<div class="hhc-section-header-row">
+				<div>
+					<h3>7-Day Occupancy Summary</h3>
+					<p class="hhc-section-desc">Big number = occupied tonight, small = vacant. D&nbsp;/&nbsp;S&nbsp;/&nbsp;A = departures / stays / arrivals. Use &minus;&nbsp;/&nbsp;+ to add expected pickup bookings.</p>
+				</div>
+				<div class="hhc-last-viewed-wrap">
+					<label for="hhc-last-viewed">Changes since</label>
+					<input type="date" id="hhc-last-viewed" class="hhc-date-picker">
+				</div>
+			</div>
 		</div>
 		<div class="hhc-table-scroll">
 			<table class="hhc-table hhc-summary-table" id="hhc-summary-table"></table>

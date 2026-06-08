@@ -25,6 +25,17 @@
 	// =========================================================================
 
 	function init() {
+		// Initialise last-viewed picker from localStorage, defaulting to yesterday
+		var lvPicker = document.getElementById('hhc-last-viewed');
+		var storedLv = localStorage.getItem('hhc_last_viewed');
+		lvPicker.value = storedLv || offsetDate(todayString(), -1);
+		lvPicker.addEventListener('change', function () {
+			if (this.value) {
+				localStorage.setItem('hhc_last_viewed', this.value);
+				loadAll(true);
+			}
+		});
+
 		document.getElementById('hhc-refresh').addEventListener('click', function () {
 			loadAll(true);
 		});
@@ -95,6 +106,8 @@
 		fd.append('nonce',  hhcData.nonce);
 		fd.append('force_refresh', force ? '1' : '0');
 		if (startDate) { fd.append('start_date', startDate); }
+		var lvVal = document.getElementById('hhc-last-viewed').value;
+		if (lvVal) { fd.append('last_viewed', lvVal); }
 
 		return fetch(hhcData.ajax_url, { method: 'POST', body: fd })
 			.then(function (r) { return r.json(); })
@@ -201,20 +214,52 @@
 				var prevOccupied  = prevDate ? (cat.days[prevDate].stays + cat.days[prevDate].arrivals) : 0;
 				var pickupFromPrev = prevDate ? getDisplayPickup(cat.id, prevDate, prevOccupied, cat.total_rooms) : 0;
 
+				var dNew  = d.delta_new       || 0;
+				var dCanc = d.delta_cancelled || 0;
+
 				html += '<td class="hhc-total-cell" rowspan="3">';
-				html += '<div class="hhc-rooms-num">' + occupied +
-					(pickup > 0 ? '<span class="hhc-pickup-tag"> +' + pickup + '</span>' : '') + '</div>';
-				html += '<div class="hhc-occ-vac">' + vacant + ' vac' +
-					(pickup > 0 ? '<span class="hhc-pickup-tag"> (' + (vacant - pickup) + ')</span>' : '') + '</div>';
+				if (dNew > 0 || dCanc > 0) {
+					html += '<div class="hhc-delta">';
+					if (dNew  > 0) { html += '<span class="hhc-delta-new">&#9650;' + dNew  + '</span>'; }
+					if (dCanc > 0) { html += '<span class="hhc-delta-canc">&#9660;' + dCanc + '</span>'; }
+					html += '</div>';
+				}
 				var hint      = d.pickup_hint || 0;
 				var leadDays  = d.pickup_lead !== undefined ? d.pickup_lead : 0;
 				var priorOcc  = d.prior_occ !== undefined ? d.prior_occ : 0;
 				var priorVac  = d.prior_vac !== undefined ? d.prior_vac : 0;
-				var occLine   = 'Last ' + getDayName(date) + ': finished with ' + priorOcc + ' occ (' + priorVac + ' vac) ' + cat.name;
-				var tooltip   = hint > 0
-					? occLine + ' — ' + hint + ' room' + (hint === 1 ? '' : 's') +
-					  ' picked up within ' + leadDays + ' day' + (leadDays === 1 ? '' : 's') + ' of arrival'
-					: occLine + ' — no late pickups';
+
+				// Occupied number tooltip
+				var occTooltip = '';
+				var saved = pickupData[cat.id] && pickupData[cat.id][date];
+				if (saved && saved.count) {
+					var savedBooked = saved.total - saved.count;
+					var bookedChange = occupied - savedBooked;
+					var changeDesc = bookedChange > 0
+						? 'increased by ' + bookedChange + ' to ' + occupied
+						: bookedChange < 0
+							? 'decreased by ' + Math.abs(bookedChange) + ' to ' + occupied
+							: 'unchanged at ' + occupied;
+					var pickupDesc = pickup < saved.count
+						? 'decreased to ' + pickup
+						: 'remains ' + pickup;
+					occTooltip = '+' + saved.count + ' pickup set when booked was ' + savedBooked +
+						' (target ' + saved.total + '). Booked ' + changeDesc +
+						', so pickup ' + pickupDesc + '.';
+				}
+				var priorLine = 'Last ' + getDayName(date) + ': ' + priorOcc + ' occ (' + priorVac + ' vac) — ' +
+					( hint > 0
+						? hint + ' room' + (hint === 1 ? '' : 's') + ' picked up within ' + leadDays + ' day' + (leadDays === 1 ? '' : 's') + ' of arrival'
+						: 'no late pickups' );
+				occTooltip += (occTooltip ? ' | ' : '') + priorLine;
+
+				// Pickup + button tooltip (prior week hint only)
+				var tooltip = priorLine;
+
+				html += '<div class="hhc-rooms-num" title="' + esc(occTooltip) + '">' + occupied +
+					(pickup > 0 ? '<span class="hhc-pickup-tag"> +' + pickup + '</span>' : '') + '</div>';
+				html += '<div class="hhc-occ-vac">' + vacant + ' vac' +
+					(pickup > 0 ? '<span class="hhc-pickup-tag"> (' + (vacant - pickup) + ')</span>' : '') + '</div>';
 
 				html += '<div class="hhc-pickup-ctrl">';
 				html += '<button class="hhc-pickup-btn hhc-pickup-dec"' +
@@ -256,7 +301,7 @@
 		// Footer: totals
 		var totals = {};
 		dates.forEach(function (date, di) {
-			totals[date] = { servicing: 0, occupied: 0, vacant: 0, departs: 0, stays: 0, arrivals: 0, pickupArrive: 0, pickupDepart: 0 };
+			totals[date] = { servicing: 0, occupied: 0, vacant: 0, departs: 0, stays: 0, arrivals: 0, pickupArrive: 0, pickupDepart: 0, deltaNew: 0, deltaCanc: 0 };
 			cats.forEach(function (cat) {
 				var d        = cat.days[date];
 				var occupied = d.stays + d.arrivals;
@@ -275,6 +320,8 @@
 				totals[date].arrivals     += d.arrivals;
 				totals[date].pickupArrive += pickup;
 				totals[date].pickupDepart += prevPickup;
+				totals[date].deltaNew     += d.delta_new       || 0;
+				totals[date].deltaCanc    += d.delta_cancelled || 0;
 			});
 		});
 
@@ -283,7 +330,16 @@
 		html += '<td class="hhc-cat-label" rowspan="3" style="font-style:italic">Total</td>';
 		dates.forEach(function (date) {
 			var pickupTotal = totals[date].pickupArrive;
-			html += '<td class="hhc-total-cell" rowspan="3"><div class="hhc-rooms-num">' + totals[date].occupied +
+			var tdNew  = totals[date].deltaNew;
+			var tdCanc = totals[date].deltaCanc;
+			var tdeltaHtml = '';
+			if (tdNew > 0 || tdCanc > 0) {
+				tdeltaHtml += '<div class="hhc-delta">';
+				if (tdNew  > 0) { tdeltaHtml += '<span class="hhc-delta-new">&#9650;' + tdNew  + '</span>'; }
+				if (tdCanc > 0) { tdeltaHtml += '<span class="hhc-delta-canc">&#9660;' + tdCanc + '</span>'; }
+				tdeltaHtml += '</div>';
+			}
+			html += '<td class="hhc-total-cell" rowspan="3">' + tdeltaHtml + '<div class="hhc-rooms-num">' + totals[date].occupied +
 				(pickupTotal > 0 ? '<span class="hhc-pickup-tag"> +' + pickupTotal + '</span>' : '') + '</div>' +
 				'<div class="hhc-occ-vac">' + totals[date].vacant + ' vac' +
 					(pickupTotal > 0 ? '<span class="hhc-pickup-tag"> (' + (totals[date].vacant - pickupTotal) + ')</span>' : '') + '</div></td>';
@@ -611,8 +667,8 @@
 		tbody.innerHTML = rows;
 
 		tbody.querySelectorAll('.hhc-time-input').forEach(function (el) {
-			el.addEventListener('input',  onTimeChange);
-			el.addEventListener('change', onTimeCommit);
+			el.addEventListener('input',  function () { onTimeChange(this); });
+			el.addEventListener('change', function () { onTimeCommit(this); });
 		});
 	}
 
@@ -679,16 +735,28 @@
 			' value="' + (parseInt(value, 10) || 0) + '">';
 	}
 
-	function onTimeChange() {
-		collectTimeReqs();
+	function onTimeChange(el) {
+		var cat    = el.dataset.cat;
+		var action = el.dataset.action;
+		var value  = parseInt(el.value, 10) || 0;
+		if (!settings.time_requirements[cat]) {
+			settings.time_requirements[cat] = { depart: 0, stay: 0, arrive: 0 };
+		}
+		settings.time_requirements[cat][action] = value;
 		renderRequiredTable();
 		recalcDiffRow();
-		debounce('req', saveTimeRequirements, 400);
+		debounce('req-' + cat + '-' + action, function () { saveTimeField(cat, action, value); }, 400);
 	}
 
-	function onTimeCommit() {
-		collectTimeReqs();
-		saveTimeRequirements();
+	function onTimeCommit(el) {
+		var cat    = el.dataset.cat;
+		var action = el.dataset.action;
+		var value  = parseInt(el.value, 10) || 0;
+		if (!settings.time_requirements[cat]) {
+			settings.time_requirements[cat] = { depart: 0, stay: 0, arrive: 0 };
+		}
+		settings.time_requirements[cat][action] = value;
+		saveTimeField(cat, action, value);
 	}
 
 	function collectTimeReqs() {
@@ -729,9 +797,15 @@
 		});
 		tfootHtml += '<td></td></tr>';
 
-		tfootHtml += '<tr class="hhc-diff-row"><td style="text-align:left;font-size:12px;color:#555">Diff vs Required</td>';
+		tfootHtml += '<tr class="hhc-diff-row"><td style="text-align:left;font-size:12px;color:#555">Diff vs Booked</td>';
 		dates.forEach(function (date) {
 			tfootHtml += '<td class="hhc-diff-cell" id="hhc-diff-' + date + '">&mdash;</td>';
+		});
+		tfootHtml += '<td></td></tr>';
+
+		tfootHtml += '<tr class="hhc-diff-row hhc-diff-pickup-row"><td style="text-align:left;font-size:12px;color:#555">Diff vs with Pickup</td>';
+		dates.forEach(function (date) {
+			tfootHtml += '<td class="hhc-diff-cell" id="hhc-diff-pickup-' + date + '">&mdash;</td>';
 		});
 		tfootHtml += '<td></td></tr>';
 
@@ -810,30 +884,36 @@
 			var availEl = document.getElementById('hhc-avail-' + date);
 			if (availEl) { availEl.textContent = fmtHrsNum(available); }
 
-			var diffEl = document.getElementById('hhc-diff-' + date);
-			if (!diffEl) { return; }
+			var bookedHrs  = required[date].booked + required[date].general;
+			var totalHrs   = required[date].total;
 
-			var reqHrs = required[date].total;
-			var diff   = available - reqHrs;
-
-			diffEl.className = 'hhc-diff-cell';
-
-			if (reqHrs === 0 && available === 0) {
-				diffEl.textContent = '—';
-				return;
-			}
-
-			if (diff < -tolerance) {
-				diffEl.classList.add('hhc-diff-under');
-				diffEl.innerHTML = '✗ ' + fmtHrsNum(Math.abs(diff)) + ' short';
-			} else if (diff > tolerance) {
-				diffEl.classList.add('hhc-diff-over');
-				diffEl.innerHTML = '⚠ ' + fmtHrsNum(diff) + ' spare';
-			} else {
-				diffEl.classList.add('hhc-diff-ok');
-				diffEl.innerHTML = '✓ ' + (diff >= 0 ? '+' : '') + fmtHrsNum(diff);
-			}
+			setDiffCell('hhc-diff-' + date,        available, bookedHrs, tolerance);
+			setDiffCell('hhc-diff-pickup-' + date, available, totalHrs,  tolerance);
 		});
+	}
+
+	function setDiffCell(id, available, reqHrs, tolerance) {
+		var el = document.getElementById(id);
+		if (!el) { return; }
+
+		var diff = available - reqHrs;
+		el.className = 'hhc-diff-cell';
+
+		if (reqHrs === 0 && available === 0) {
+			el.textContent = '—';
+			return;
+		}
+
+		if (diff < -tolerance) {
+			el.classList.add('hhc-diff-under');
+			el.innerHTML = '✗ ' + fmtHrsNum(Math.abs(diff)) + ' short';
+		} else if (diff > tolerance) {
+			el.classList.add('hhc-diff-over');
+			el.innerHTML = '⚠ ' + fmtHrsNum(diff) + ' spare';
+		} else {
+			el.classList.add('hhc-diff-ok');
+			el.innerHTML = '✓ ' + (diff >= 0 ? '+' : '') + fmtHrsNum(diff);
+		}
 	}
 
 	// =========================================================================
@@ -862,12 +942,13 @@
 	// Save functions
 	// =========================================================================
 
-	function saveTimeRequirements() {
-		collectTimeReqs();
+	function saveTimeField(cat, action, value) {
 		var fd = new FormData();
 		fd.append('action', 'hhc_save_time_requirements');
 		fd.append('nonce',  hhcData.nonce);
-		fd.append('time_requirements', JSON.stringify(settings.time_requirements));
+		fd.append('cat',    cat);
+		fd.append('act',    action);
+		fd.append('val',    value);
 
 		fetch(hhcData.ajax_url, { method: 'POST', body: fd })
 			.then(function (r) { return r.json(); })
@@ -934,13 +1015,6 @@
 
 	window.addEventListener('beforeunload', function () {
 		if (!bookingsData) { return; }
-
-		collectTimeReqs();
-		var fd1 = new FormData();
-		fd1.append('action', 'hhc_save_time_requirements');
-		fd1.append('nonce',  hhcData.nonce);
-		fd1.append('time_requirements', JSON.stringify(settings.time_requirements));
-		navigator.sendBeacon(hhcData.ajax_url, fd1);
 
 		var staffData = collectStaffData();
 		if (staffData.length) {

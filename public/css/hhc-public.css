@@ -48,6 +48,38 @@
 	gap: 4px;
 }
 
+/* ---- Summary section header row (title + last-viewed picker) ---- */
+.hhc-section-header-row {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.hhc-last-viewed-wrap {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	color: #555;
+	white-space: nowrap;
+	padding-top: 2px;
+}
+
+/* ---- Delta ticker (new/cancelled since last viewed) ---- */
+.hhc-delta {
+	display: flex;
+	gap: 4px;
+	justify-content: center;
+	font-size: 11px;
+	font-weight: 700;
+	margin-bottom: 2px;
+}
+
+.hhc-delta-new  { color: #27ae60; }
+.hhc-delta-canc { color: #c0392b; }
+
 .hhc-date-picker {
 	padding: 7px 10px;
 	border: 1px solid #ccc;
@@ -457,6 +489,10 @@
 .hhc-diff-row td:first-child {
 	font-size: 12px;
 	color: #555;
+}
+
+.hhc-diff-pickup-row td:first-child {
+	color: #c0392b;
 }
 
 .hhc-diff-cell {

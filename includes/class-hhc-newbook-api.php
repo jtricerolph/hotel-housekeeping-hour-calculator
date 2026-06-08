@@ -62,8 +62,8 @@ class HHC_Newbook_API {
 
 	/**
 	 * Fetch all bookings overlapping a date range.
-	 * list_type 'staying' returns confirmed/unconfirmed/arrived/departed,
-	 * excludes cancelled, no_show, quote, waitlist, owner_occupied.
+	 * list_type 'staying' returns confirmed/unconfirmed/arrived/departed bookings
+	 * that overlap the period (including long stays that started before period_from).
 	 */
 	public function fetch_bookings_range( $start_date, $end_date ) {
 		return $this->call_api(
@@ -72,6 +72,23 @@ class HHC_Newbook_API {
 				'period_from' => $start_date . ' 00:00:00',
 				'period_to'   => $end_date . ' 23:59:59',
 				'list_type'   => 'staying',
+				'data_offset' => 0,
+				'data_limit'  => 2000,
+			)
+		);
+	}
+
+	/**
+	 * Fetch all bookings (including cancelled) placed or modified since a given date.
+	 * Used for delta calculations only — does not affect occupancy counts.
+	 */
+	public function fetch_bookings_delta( $start_date, $end_date ) {
+		return $this->call_api(
+			'bookings_list',
+			array(
+				'period_from' => $start_date . ' 00:00:00',
+				'period_to'   => $end_date . ' 23:59:59',
+				'list_type'   => 'all',
 				'data_offset' => 0,
 				'data_limit'  => 2000,
 			)
