@@ -98,15 +98,15 @@
 	}
 
 	function updateLastViewedBtn() {
-		var btn = document.getElementById('hhc-update-last-viewed');
-		if (!btn) { return; }
+		var display = document.getElementById('hhc-last-viewed-display');
+		if (!display) { return; }
 		var val = document.getElementById('hhc-last-viewed').value;
-		if (!val) { return; }
+		if (!val) { display.textContent = ''; return; }
 		var d = new Date(val + 'T00:00:00');
 		var fmt = String(d.getDate()).padStart(2, '0') + '/' +
 			String(d.getMonth() + 1).padStart(2, '0') + '/' +
 			String(d.getFullYear()).slice(2);
-		btn.textContent = 'Update Last Viewed (' + fmt + ')';
+		display.textContent = fmt;
 	}
 
 	function todayString() {

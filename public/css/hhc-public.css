@@ -67,6 +67,12 @@
 	padding-top: 2px;
 }
 
+.hhc-last-viewed-display {
+	font-weight: 600;
+	color: #333;
+	min-width: 52px;
+}
+
 /* ---- Delta ticker (new/cancelled since last viewed) ---- */
 .hhc-delta {
 	display: flex;

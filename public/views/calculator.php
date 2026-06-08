@@ -40,6 +40,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<div class="hhc-last-viewed-wrap">
 					<label for="hhc-last-viewed">Changes since</label>
 					<input type="date" id="hhc-last-viewed" class="hhc-date-picker">
+					<span class="hhc-last-viewed-display" id="hhc-last-viewed-display"></span>
+					<button class="hhc-btn hhc-btn-secondary hhc-btn-update-lv" id="hhc-update-last-viewed">Update to Now</button>
 				</div>
 			</div>
 		</div>
